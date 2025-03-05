@@ -1,21 +1,66 @@
 use eframe::egui;
 use std::process::{Command, Stdio};
-use std::thread;
+use std::thread::{self,JoinHandle};
 
 
-struct MyApp {
+struct LauncherApp {
     text: String,
+    server_thread: Option<JoinHandle<()>>,
+    client_thread: Option<JoinHandle<()>>,
 }
 
-impl Default for MyApp {
+impl Default for LauncherApp {
     fn default() -> Self {
         Self {
             text: String::new(),
+            server_thread: None,
+            client_thread: None,
         }
     }
 }
 
-impl eframe::App for MyApp {
+
+fn launch_server() -> JoinHandle<()>{
+    let server_thread = thread::spawn(|| {
+        println!("Starting server...");
+        let status = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("server")
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status()
+            .expect("Failed to start server");
+
+        if !status.success() {
+            eprintln!("Server failed to start");
+        }
+    });
+    server_thread
+}
+
+
+fn launch_client()-> JoinHandle<()>{
+    let client_thread = thread::spawn(|| {
+        println!("Starting client...");
+        let status = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("client")
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .status()
+            .expect("Failed to start client");
+
+        if !status.success() {
+            eprintln!("Client failed to start");
+        }
+    });
+    client_thread
+}
+
+
+impl eframe::App for LauncherApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.set_visuals(egui::Visuals {
             dark_mode: true,
@@ -72,43 +117,16 @@ impl eframe::App for MyApp {
                 ui.heading("Game Launcher");
 
                 if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Host")).clicked() {
-                    let _server_thread = thread::spawn(|| {
-                        println!("Starting server...");
-                        let status = Command::new("cargo")
-                            .arg("run")
-                            .arg("--bin")
-                            .arg("server")
-                            .stdout(Stdio::inherit())
-                            .stderr(Stdio::inherit())
-                            .status()
-                            .expect("Failed to start server");
-                
-                        if !status.success() {
-                            eprintln!("Server failed to start");
-                        }
-                    });
+                    self.server_thread = Some(launch_server());
                 }
-                ui.add(egui::Separator::default()
-            .spacing(10.0));
+
+                ui.add(egui::Separator::default().spacing(10.0));
+
                 ui.add(egui::TextEdit::singleline(&mut self.text)
                     .desired_width(f32::INFINITY)
                     .hint_text("Enter lobby ID"));
                 if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Join")).clicked() {
-                    let _client_thread = thread::spawn(|| {
-                        println!("Starting client...");
-                        let status = Command::new("cargo")
-                            .arg("run")
-                            .arg("--bin")
-                            .arg("client")
-                            .stdout(Stdio::inherit())
-                            .stderr(Stdio::inherit())
-                            .status()
-                            .expect("Failed to start client");
-                
-                        if !status.success() {
-                            eprintln!("Client failed to start");
-                        }
-                    });
+                    self.client_thread = Some(launch_client());
                 }
             });
         });
@@ -126,6 +144,6 @@ fn main() -> eframe::Result<()> {
     eframe::run_native(
         "Game Launcher",
         options,
-        Box::new(|_cc| Ok(Box::new(MyApp::default()))),
+        Box::new(|_cc| Ok(Box::new(LauncherApp::default()))),
     )
 }
