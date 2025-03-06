@@ -1,64 +1,47 @@
+mod client;
+mod server;
+
 use eframe::egui;
-use std::process::{Command, Stdio};
-use std::thread::{self,JoinHandle};
+use client::Client;
+use server::Server;
 
-
+const COMMS_PORT:u16 =13882; 
 struct LauncherApp {
     text: String,
-    server_thread: Option<JoinHandle<()>>,
-    client_thread: Option<JoinHandle<()>>,
+    client: Option<Client>,
+    server: Option<Server>,
 }
 
 impl Default for LauncherApp {
     fn default() -> Self {
         Self {
             text: String::new(),
-            server_thread: None,
-            client_thread: None,
+            client: None,
+            server: None,
         }
     }
 }
 
+impl LauncherApp {
+    fn launch_server(&mut self) -> Result<(),std::io::Error>{
+        println!("Attempting to start server");
+        self.server = Some(Server::new().unwrap());
+        println!("Server initialized");
 
-fn launch_server() -> JoinHandle<()>{
-    let server_thread = thread::spawn(|| {
-        println!("Starting server...");
-        let status = Command::new("cargo")
-            .arg("run")
-            .arg("--bin")
-            .arg("server")
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .status()
-            .expect("Failed to start server");
+        self.server.as_mut().unwrap().start();
+        println!("Server started");
+        Ok(())
+    }
 
-        if !status.success() {
-            eprintln!("Server failed to start");
-        }
-    });
-    server_thread
+
+    fn launch_client(&mut self,server_ip: String) -> Result<(), std::io::Error> {
+
+        self.client = Some(Client::new(server_ip).unwrap());
+
+        self.client.as_ref().unwrap().start();
+        Ok(())
+    }
 }
-
-
-fn launch_client()-> JoinHandle<()>{
-    let client_thread = thread::spawn(|| {
-        println!("Starting client...");
-        let status = Command::new("cargo")
-            .arg("run")
-            .arg("--bin")
-            .arg("client")
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .status()
-            .expect("Failed to start client");
-
-        if !status.success() {
-            eprintln!("Client failed to start");
-        }
-    });
-    client_thread
-}
-
 
 impl eframe::App for LauncherApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -117,16 +100,16 @@ impl eframe::App for LauncherApp {
                 ui.heading("Game Launcher");
 
                 if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Host")).clicked() {
-                    self.server_thread = Some(launch_server());
+                    self.launch_server().expect("Failed to launch server");
                 }
 
                 ui.add(egui::Separator::default().spacing(10.0));
 
                 ui.add(egui::TextEdit::singleline(&mut self.text)
                     .desired_width(f32::INFINITY)
-                    .hint_text("Enter lobby ID"));
+                    .hint_text("Enter lobby IP"));
                 if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Join")).clicked() {
-                    self.client_thread = Some(launch_client());
+                    self.launch_client(self.text.clone()).expect("Failed to launch client");
                 }
             });
         });
