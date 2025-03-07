@@ -1,5 +1,6 @@
 mod client;
 mod server;
+mod message;
 
 use eframe::egui;
 use client::Client;
@@ -24,12 +25,9 @@ impl Default for LauncherApp {
 
 impl LauncherApp {
     fn launch_server(&mut self) -> Result<(),std::io::Error>{
-        println!("Attempting to start server");
         self.server = Some(Server::new().unwrap());
-        println!("Server initialized");
 
         self.server.as_mut().unwrap().start();
-        println!("Server started");
         Ok(())
     }
 
