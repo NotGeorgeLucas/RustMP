@@ -5,12 +5,13 @@ mod message;
 use eframe::egui;
 use client::Client;
 use server::Server;
+use std::sync::{Arc,Mutex};
 
 const COMMS_PORT:u16 =13882; 
 struct LauncherApp {
     text: String,
-    client: Option<Client>,
-    server: Option<Server>,
+    client: Option<Arc<Mutex<Client>>>,
+    server: Option<Arc<Mutex<Server>>>,
 }
 
 impl Default for LauncherApp {
@@ -25,18 +26,24 @@ impl Default for LauncherApp {
 
 impl LauncherApp {
     fn launch_server(&mut self) -> Result<(),std::io::Error>{
-        self.server = Some(Server::new().unwrap());
+        self.server = Some(Arc::new(Mutex::new(Server::new().unwrap())));
 
-        self.server.as_mut().unwrap().start();
+        if let Some(server) = self.server.take() {
+            let server_clone = Arc::clone(&server);
+            server.lock().unwrap().start(server_clone);
+        }
         Ok(())
     }
 
 
     fn launch_client(&mut self,server_ip: String) -> Result<(), std::io::Error> {
 
-        self.client = Some(Client::new(server_ip).unwrap());
+        self.client = Some(Arc::new(Mutex::new(Client::new(server_ip).unwrap())));
 
-        self.client.as_ref().unwrap().start();
+        if let Some(client) = self.client.take() {
+            let client_clone = Arc::clone(&client);
+            client.lock().unwrap().start(client_clone);
+        }
         Ok(())
     }
 }

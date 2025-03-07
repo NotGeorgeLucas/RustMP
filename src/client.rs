@@ -88,15 +88,12 @@ impl Client{
 
     
 
-    pub fn start(&self) {
-        let original_boxed = Box::new(self.clone());
+    pub fn start(&self, self_mutex: Arc<Mutex<Self>>) {
+        let mut_ref = Arc::clone(&self_mutex);
 
-        let original_arc = Arc::new(Mutex::new(original_boxed));
-
-        let self_clone = Arc::clone(&original_arc);
         let _receive_thread = thread::spawn(move || {
             loop {
-                let mut locked = self_clone.lock().unwrap();
+                let mut locked = mut_ref.lock().unwrap();
                 locked.receive_message().expect("Failed to receive message");
             }
         });
