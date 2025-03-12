@@ -36,7 +36,10 @@ impl LauncherApp {
     }
 
 
-    fn launch_client(&mut self,server_ip: String) -> Result<(), std::io::Error> {
+    fn launch_client(&mut self,server_ip: String) -> Result<(), String> {
+        if server_ip.is_empty() {
+            return Err("Cannot divide by zero".to_string());
+        }
 
         self.client = Some(Arc::new(Mutex::new(Client::new(server_ip).unwrap())));
 
@@ -114,7 +117,7 @@ impl eframe::App for LauncherApp {
                     .desired_width(f32::INFINITY)
                     .hint_text("Enter lobby IP"));
                 if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Join")).clicked() {
-                    self.launch_client(self.text.clone()).expect("Failed to launch client");
+                    match self.launch_client(self.text.clone()).expect("Failed to launch client")
                 }
             });
         });
