@@ -108,7 +108,11 @@ impl eframe::App for LauncherApp {
                 ui.heading("Game Launcher");
 
                 if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Host")).clicked() {
-                    self.launch_server().expect("Failed to launch server");
+                    match self.launch_server(){
+                        Ok(()) => println!("Server started"),
+                        Err(e) => println!("Error: {}",e),
+                    }
+                    
                 }
 
                 ui.add(egui::Separator::default().spacing(10.0));
@@ -117,7 +121,10 @@ impl eframe::App for LauncherApp {
                     .desired_width(f32::INFINITY)
                     .hint_text("Enter lobby IP"));
                 if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Join")).clicked() {
-                    self.launch_client(self.text.clone()).expect("Failed to launch client");
+                    match self.launch_client(self.text.clone()){
+                        Ok(())=>println!("Client started"),
+                        Err(e) => println!("Error: {}",e),
+                    }
                 }
             });
         });
