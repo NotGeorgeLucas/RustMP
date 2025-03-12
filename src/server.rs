@@ -18,7 +18,7 @@ pub struct Server {
 
 impl Server {
     pub fn new() -> Result<Server> {
-        let server_address = format!("127.0.0.1:{}",COMMS_PORT);
+        let server_address = format!("0.0.0.0:{}",COMMS_PORT);
         let socket = UdpSocket::bind(server_address.clone()).unwrap();
 
         Ok(Server {
@@ -46,7 +46,8 @@ impl Server {
         if received_map.contains_key("goal"){
             match received_map.get("goal"){
                 Some(goal) => match goal.as_str() {
-                    "connect" => {
+                    "sync" => {
+                        println!("SUKA BLYAT");
                         response_map.insert(String::from("goal"), String::from("confirm connect"));
                         let new_id = self.gen_new_id();
                         self.user_map.insert(new_id, client_address);
