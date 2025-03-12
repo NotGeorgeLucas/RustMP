@@ -117,7 +117,7 @@ impl eframe::App for LauncherApp {
                     .desired_width(f32::INFINITY)
                     .hint_text("Enter lobby IP"));
                 if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Join")).clicked() {
-                    match self.launch_client(self.text.clone()).expect("Failed to launch client")
+                    self.launch_client(self.text.clone()).expect("Failed to launch client");
                 }
             });
         });
