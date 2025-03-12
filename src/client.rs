@@ -1,4 +1,5 @@
 use crate::message::Message;
+use crate::COMMS_PORT;
 use std::collections::HashMap;
 use std::net::{UdpSocket, SocketAddr};
 use std::io::Result;
@@ -21,7 +22,7 @@ impl Client{
     pub fn new(server_address_ip: String) -> Result<Client> {
         let mut server_address = server_address_ip.clone();
         server_address = server_address;
-        server_address.push_str(":34254");
+        server_address = format!("{}:{}",server_address,COMMS_PORT);
         let socket = UdpSocket::bind("0.0.0.0:0")?;
         
         Ok(Client{

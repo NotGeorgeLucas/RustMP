@@ -40,9 +40,9 @@ impl Server {
 
 
     fn process_message(&mut self,message_received: &Message,client_address:SocketAddr) -> HashMap<String,String>{
-
         let mut response_map = HashMap::new();
         let received_map = message_received.get_message_map();
+        println!("{:?}",received_map);
         if received_map.contains_key("goal"){
             match received_map.get("goal"){
                 Some(goal) => match goal.as_str() {
@@ -74,8 +74,8 @@ impl Server {
                 let response_map = self.process_message(&decoded,sender);
                 if !response_map.is_empty(){
                     self.send_message(&response_map, sender)?;
+                    println!("Sent response to {}", sender);
                 }
-                println!("Sent response to {}", sender);
             }
             Err(e) =>{
                 println!("Failed to decode message: {}", e);
