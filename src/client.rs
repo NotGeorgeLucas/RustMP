@@ -41,7 +41,11 @@ impl Client{
             match received_map.get("goal"){
                 Some(goal) => match goal.as_str() {
                     "confirm connect" => {
-                        self.personal_id = message_received.get_message_map().get("id").unwrap().parse().expect("Invalid i32 id");
+                        if let Ok(new_id) = message_received.get_message_map().get("id").unwrap().parse(){
+                            self.personal_id = new_id;
+                        }else{
+                            eprint!("ID not a valid i32")
+                        }
                     },
                     _ =>{
                         println!("Unknown message type");
@@ -66,8 +70,8 @@ impl Client{
 
                 if !response_map.is_empty(){
                     self.send_message(&response_map)?;
+                    println!("Sent response to {}", sender);
                 }
-                println!("Sent response to {}", sender);
             }
             Err(e) =>{
                 println!("Failed to decode message: {}", e);
@@ -78,12 +82,15 @@ impl Client{
 
 
     pub fn send_message(&self,message: &HashMap<String,String>) -> Result<()> {
-        let message_struct: Message = Message::new(-1, message.clone()).expect("Message malformed");
+        if let Ok(message_struct) = Message::new(-1, message.clone()){
+            let message_bytes = bincode::serialize(&message_struct).unwrap();
+            
+            self.socket.lock().unwrap().send_to(&message_bytes, self.server_address)?;
+            println!("Sent packet to {}", self.server_address);
+        }else{
+            eprintln!("Failed to construct message");
+        }
 
-        let message_bytes = bincode::serialize(&message_struct).unwrap();
-        
-        self.socket.lock().unwrap().send_to(&message_bytes, self.server_address)?;
-        println!("Sent packet to {}", self.server_address);
         Ok(())
     }
 
@@ -95,14 +102,18 @@ impl Client{
         let _receive_thread = thread::spawn(move || {
             loop {
                 let mut locked = mut_ref.lock().unwrap();
-                locked.receive_message().expect("Failed to receive message");
+                if let Err(e) = locked.receive_message() {
+                    eprintln!("Failed to receive message: {:?}", e);
+                }
             }
         });
         
         let mut connect_message = HashMap::new();
         connect_message.insert(String::from("goal"), String::from("sync"));
         for _ in [1..5]{
-            self.send_message(&connect_message).expect("Sending message failed");
+            if let Err(e) = self.send_message(&connect_message){
+                eprintln!("Sending message failed: {:?}", e);
+            }
             thread::sleep(Duration::from_secs(2));
             if self.personal_id!=0 {println!("Connected!"); break;}
         }

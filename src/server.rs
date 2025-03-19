@@ -30,7 +30,7 @@ impl Server {
     fn gen_new_id(&self) -> i32{
         let mut key:i32 = 1;
         loop {
-            if self.user_map.contains_key(&key){
+            if !self.user_map.contains_key(&key){
                 break;
             }
             key+=1;
@@ -47,7 +47,6 @@ impl Server {
             match received_map.get("goal"){
                 Some(goal) => match goal.as_str() {
                     "sync" => {
-                        println!("SUKA BLYAT");
                         response_map.insert(String::from("goal"), String::from("confirm connect"));
                         let new_id = self.gen_new_id();
                         self.user_map.insert(new_id, client_address);
@@ -75,7 +74,7 @@ impl Server {
                 let response_map = self.process_message(&decoded,sender);
                 if !response_map.is_empty(){
                     self.send_message(&response_map, sender)?;
-                    println!("Sent response to {}", sender);
+                    println!("Sent response: {:?}",response_map);
                 }
             }
             Err(e) =>{
@@ -87,13 +86,17 @@ impl Server {
 
 
     pub fn send_message(&self,message: &HashMap<String,String>,target:SocketAddr) -> Result<()> {
-        let message_struct: Message = Message::new(-1, message.clone()).expect("Message malformed");
-
-        let message_bytes = bincode::serialize(&message_struct).unwrap();
-        
-        self.socket.lock().unwrap().send_to(&message_bytes, target)?;
-        println!("Sent packet to {}", target);
+        if let Ok(message_struct) = Message::new(-1, message.clone()) {
+            let message_bytes = bincode::serialize(&message_struct).unwrap();
+            
+            self.socket.lock().unwrap().send_to(&message_bytes, target)?;
+            println!("Sent packet to {}", target);
+        }else{
+            eprintln!("Failed to create message: Message malformed");
+        }
         Ok(())
+        
+
     }
 
     pub fn start(&mut self, self_mutex: Arc<Mutex<Self>>) {
@@ -102,7 +105,9 @@ impl Server {
         let _receive_thread = thread::spawn(move || {
             loop {
                 let mut locked = mut_ref.lock().unwrap();
-                locked.receive_message().expect("Failed to receive message");
+                if let Err(e) = locked.receive_message() {
+                    eprintln!("Failed to receive message: {:?}", e);
+                }
             }
         });
 
