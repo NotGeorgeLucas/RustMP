@@ -6,6 +6,7 @@ use std::io::Result;
 use std::sync::{Arc,Mutex};
 use std::thread;
 use std::str::FromStr;
+use colored::*;
 
 #[derive(Clone)]
 pub struct Server {
@@ -110,7 +111,9 @@ impl Server {
                 }
             }
         });
-
+        println!("{}", "═════════════════════════════".bold().bright_cyan());
+        println!("{}", "  Server is up and running!".bold().bright_green());
+        println!("{}", "═════════════════════════════".bold().bright_cyan());
         self.user_map.insert(-1, SocketAddr::from_str("127.0.0.1:8080").unwrap());
     }
 }

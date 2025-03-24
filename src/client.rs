@@ -7,6 +7,7 @@ use std::str::FromStr;
 use std::thread;
 use std::sync::{Arc,Mutex};
 use std::time::Duration;
+use colored::*;
 
 
 #[derive(Clone)]
@@ -115,7 +116,12 @@ impl Client{
                 eprintln!("Sending message failed: {:?}", e);
             }
             thread::sleep(Duration::from_secs(2));
-            if self.personal_id!=0 {println!("Connected!"); break;}
+            if self.personal_id!=0 {
+                println!("{}", "═════════════════════════════".bold().bright_cyan());
+                println!("{}", "  Client is up and running!".bold().bright_green());
+                println!("{}", "═════════════════════════════".bold().bright_cyan());
+                break;
+            }
         }
     }
 }

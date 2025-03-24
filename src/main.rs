@@ -1,69 +1,46 @@
-mod client;
-mod server;
-mod message;
-mod game_main;
-
 use eframe::egui;
-use client::Client;
-use server::Server;
-use game_main::GameHandle;
-use std::sync::{Arc,Mutex};
+use std::process::Command;
+use RustMP::COMMS_PORT;
 
-const COMMS_PORT:u16 =13882; 
 struct LauncherApp {
     text: String,
-    client: Option<Arc<Mutex<Client>>>,
-    server: Option<Arc<Mutex<Server>>>,
-    game_main: Option<Arc<Mutex<GameHandle>>>,
+    pending_launch: bool,
+    is_server: Option<bool>,
 }
 
 impl Default for LauncherApp {
     fn default() -> Self {
         Self {
             text: String::new(),
-            client: None,
-            server: None,
-            game_main: None,
+            pending_launch: false,
+            is_server: None,
         }
     }
 }
 
 impl LauncherApp {
-    
-    fn launch_game(&mut self) -> Result<(),std::io::Error>{
-        self.game_main = Some(Arc::new(Mutex::new(game_main::start())));
-        Ok(())
+    fn initiate_game_launch(&mut self, is_server: bool){
+        self.is_server = Some(is_server);
+        self.pending_launch = true;
     }
 
 
-    fn launch_server(&mut self) -> Result<(),std::io::Error>{
-        self.server = Some(Arc::new(Mutex::new(Server::new().unwrap())));
-
-        if let Some(server) = self.server.take() {
-            let server_clone = Arc::clone(&server);
-            server.lock().unwrap().start(server_clone);
-        }
+    fn launch_game_after_closure(&mut self,is_server: bool, ip_string: Option<String>) -> Result<(),std::io::Error>{
+        Command::new("target/debug/game_main")
+            .args(format!("{} {}:{}",is_server,ip_string.unwrap(),COMMS_PORT).split_whitespace())
+            .spawn()?;
         Ok(())
     }
 
-
-    fn launch_client(&mut self,server_ip: String) -> Result<(), String> {
-        if server_ip.is_empty() {
-            return Err("Cannot divide by zero".to_string());
-        }
-
-        self.client = Some(Arc::new(Mutex::new(Client::new(server_ip).unwrap())));
-
-        if let Some(client) = self.client.take() {
-            let client_clone = Arc::clone(&client);
-            client.lock().unwrap().start(client_clone);
-        }
-        Ok(())
-    }
 }
 
 impl eframe::App for LauncherApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if self.pending_launch {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            self.pending_launch = false;
+            self.launch_game_after_closure(self.is_server.unwrap(), Some(self.text.clone())).expect("Failed to launch game main");
+        }
         ctx.set_visuals(egui::Visuals {
             dark_mode: true,
             override_text_color: Some(egui::Color32::WHITE),
@@ -119,11 +96,7 @@ impl eframe::App for LauncherApp {
                 ui.heading("Game Launcher");
 
                 if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Host")).clicked() {
-                    match self.launch_server(){
-                        Ok(()) => {println!("Server started"); self.launch_game().expect("Game Launch Failed");},
-                        Err(e) => println!("Error: {}",e),
-                    }
-                    
+                    self.initiate_game_launch(true);                    
                 }
 
                 ui.add(egui::Separator::default().spacing(10.0));
@@ -132,10 +105,7 @@ impl eframe::App for LauncherApp {
                     .desired_width(f32::INFINITY)
                     .hint_text("Enter lobby IP"));
                 if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Join")).clicked() {
-                    match self.launch_client(self.text.clone()){
-                        Ok(())=>{println!("Client started"); self.launch_game().expect("Game Launch Failed");},
-                        Err(e) => println!("Error: {}",e),
-                    }
+                    self.initiate_game_launch(false);
                 }
             });
         });

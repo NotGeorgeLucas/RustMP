@@ -1,8 +1,11 @@
 use bevy::prelude::*;
 use bevy::input::ButtonInput;
 use std::sync::{Arc, Mutex};
+use RustMP::server::Server;
+use RustMP::client::Client;
 
-// Define a window configuration struct
+
+
 #[derive(Resource)]
 struct GameWindow {
     width: f32,
@@ -10,69 +13,108 @@ struct GameWindow {
     title: String,
 }
 
-// Define a shared state for external communication
+
 #[derive(Resource, Default)]
 struct GameState {
-    should_quit: bool,
-    // Add any other state you need to control externally
 }
 
-// Create a handle struct to interact with the game
+
 pub struct GameHandle {
     game_state: Arc<Mutex<GameState>>,
+    client: Option<Arc<Mutex<Client>>>,
+    server: Option<Arc<Mutex<Server>>>,
 }
 
 impl GameHandle {
-    
+    fn launch_server(&mut self) -> Result<(),std::io::Error>{
+        self.server = Some(Arc::new(Mutex::new(Server::new().unwrap())));
+
+        if let Some(server) = self.server.take() {
+            let server_clone = Arc::clone(&server);
+            server.lock().unwrap().start(server_clone);
+        }
+        Ok(())
+    }
+
+
+    fn launch_client(&mut self,server_ip: String) -> Result<(), String> {
+        if server_ip.is_empty() {
+            return Err("No IP address provided".to_string());
+        }
+
+        self.client = Some(Arc::new(Mutex::new(Client::new(server_ip).unwrap())));
+
+        if let Some(client) = self.client.take() {
+            let client_clone = Arc::clone(&client);
+            client.lock().unwrap().start(client_clone);
+        }
+        Ok(())
+    }
+
+    fn construct_client(game_state: Arc<Mutex<GameState>>, server_ip: String) -> Self {
+        let mut handle:GameHandle = GameHandle {
+            game_state: game_state,
+            client: None,
+            server: None,
+        };
+        handle.launch_client(server_ip).expect("Failed to launch client");
+        handle
+    }
+
+    fn construct_server(game_state: Arc<Mutex<GameState>>) -> Self {
+        let mut handle:GameHandle = GameHandle {
+            game_state: game_state,
+            client: None,
+            server: None,
+        };
+        handle.launch_server().expect("Failed to launch client");
+        handle
+    }
 }
 
-pub fn start() -> GameHandle {
-    // Create shared state for communication
+
+
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() != 3 {
+        eprintln!("Usage: game_main <is_server> <ip:port>");
+        std::process::exit(1);
+    }
+
+    let is_server = args[1].parse::<bool>().unwrap_or(false);
+    let ip_string = &args[2];
+
     let game_state = Arc::new(Mutex::new(GameState::default()));
     let game_state_clone = game_state.clone();
     
-    // Create window configuration
     let window = GameWindow {
         width: 800.0,
         height: 600.0,
-        title: String::from("My Bevy Game"),
+        title: String::from("Bevy Game"),
     };
     
-    // Spawn the game in a separate thread
-    std::thread::spawn(move || {
-        let state_resource = GameState {
-            should_quit: false,
-            // Initialize other fields as needed
-        };
-        
-        App::new()
-            .add_plugins(DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: window.title.clone(),
-                    resolution: (window.width, window.height).into(),
-                    ..default()
-                }),
-                ..default()
-            }))
-            .insert_resource(window)
-            .insert_resource(state_resource)
-            .add_systems(Startup, spawn_player)
-            .add_systems(Update, (move_player, check_quit_state))
-            .run();
-    });
-    
-    // Return a handle to interact with the game
-    GameHandle {
-        game_state: game_state_clone,
+    if is_server{
+        GameHandle::construct_server(game_state_clone);
+    }else{
+        GameHandle::construct_client(game_state_clone, ip_string.clone());
     }
+    App::new()
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
+                title: window.title.clone(),
+                resolution: (window.width, window.height).into(),
+                ..default()
+            }),
+            ..default()
+        }))
+        .insert_resource(window)
+        .insert_resource(GameState::default())
+        .add_systems(Startup, spawn_player)
+        .run();
+    
+    
 }
 
-// System to check if we should quit
-fn check_quit_state(state: Res<GameState>, mut exit: EventWriter<AppExit>) {
-    if state.should_quit {
-        exit.send(AppExit::Success);
-    }
-}
 
 #[derive(Component)]
 struct Player {
