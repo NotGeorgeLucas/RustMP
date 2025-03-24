@@ -1,10 +1,12 @@
 mod client;
 mod server;
 mod message;
+mod game_main;
 
 use eframe::egui;
 use client::Client;
 use server::Server;
+use game_main::GameHandle;
 use std::sync::{Arc,Mutex};
 
 const COMMS_PORT:u16 =13882; 
@@ -12,6 +14,7 @@ struct LauncherApp {
     text: String,
     client: Option<Arc<Mutex<Client>>>,
     server: Option<Arc<Mutex<Server>>>,
+    game_main: Option<Arc<Mutex<GameHandle>>>,
 }
 
 impl Default for LauncherApp {
@@ -20,11 +23,19 @@ impl Default for LauncherApp {
             text: String::new(),
             client: None,
             server: None,
+            game_main: None,
         }
     }
 }
 
 impl LauncherApp {
+    
+    fn launch_game(&mut self) -> Result<(),std::io::Error>{
+        self.game_main = Some(Arc::new(Mutex::new(game_main::start())));
+        Ok(())
+    }
+
+
     fn launch_server(&mut self) -> Result<(),std::io::Error>{
         self.server = Some(Arc::new(Mutex::new(Server::new().unwrap())));
 
@@ -109,7 +120,7 @@ impl eframe::App for LauncherApp {
 
                 if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Host")).clicked() {
                     match self.launch_server(){
-                        Ok(()) => println!("Server started"),
+                        Ok(()) => {println!("Server started"); self.launch_game().expect("Game Launch Failed");},
                         Err(e) => println!("Error: {}",e),
                     }
                     
@@ -122,7 +133,7 @@ impl eframe::App for LauncherApp {
                     .hint_text("Enter lobby IP"));
                 if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Join")).clicked() {
                     match self.launch_client(self.text.clone()){
-                        Ok(())=>println!("Client started"),
+                        Ok(())=>{println!("Client started"); self.launch_game().expect("Game Launch Failed");},
                         Err(e) => println!("Error: {}",e),
                     }
                 }
