@@ -3,10 +3,10 @@ use std::sync::{Arc, Mutex};
 use RustMP::server::Server;
 use RustMP::client::Client;
 use bevy::input::keyboard::KeyCode;
-use bevy::input::Input;
 use bevy::input::ButtonInput;
 use bevy::app::Startup;
 use bevy::app::Update;
+use bevy::render::view::{InheritedVisibility,Visibility};
 
 #[derive(Resource)]
 struct GameWindow {
@@ -110,27 +110,27 @@ struct Player {
     speed: f32,
 }
 
-fn spawn_player(mut commands: Commands) {
+fn spawn_player(mut commands: Commands, _asset_server: Res<AssetServer>) {
     commands.spawn((
-        SpriteBundle {
-            sprite: Sprite {
-                color: Color::rgb(0.3, 0.5, 0.8),
-                custom_size: Some(Vec2::new(50.0, 50.0)),
-                ..Default::default()
-            },
-            transform: Transform::from_xyz(0.0, 0.0, 0.0),
+        Sprite {
+            color: Color::srgb(0.3, 0.5, 0.8),
+            custom_size: Some(Vec2::new(50.0, 50.0)),
             ..Default::default()
         },
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        GlobalTransform::default(),
+        Visibility::default(),
+        InheritedVisibility::default(),
         Player { speed: 200.0 },
     ));
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d::default());
 }
 
 fn move_player(
-    keyboard_input: Res<Input<KeyCode>>,  
+    keyboard_input: Res<ButtonInput<KeyCode>>,  
     time: Res<Time>,                      
     mut query: Query<(&Player, &mut Transform)>,
 ) {
@@ -150,6 +150,6 @@ fn move_player(
             direction.x -= 1.0;
         }
 
-        transform.translation += direction.normalize_or_zero() * player.speed * time.delta_seconds();
+        transform.translation += direction.normalize_or_zero() * player.speed * time.delta_secs();
     }
 }
