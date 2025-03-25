@@ -3,22 +3,17 @@ use std::sync::{Arc, Mutex};
 use RustMP::server::Server;
 use RustMP::client::Client;
 use RustMP::network_sync::NetworkSync;
+use RustMP::player::Player;
 use bevy::input::keyboard::KeyCode;
 use bevy::input::ButtonInput;
 use bevy::app::Startup;
 use bevy::app::Update;
 use bevy::render::view::{InheritedVisibility,Visibility};
 
-#[derive(Resource)]
-struct GameWindow {
-    width: f32,
-    height: f32,
-    title: String,
-}
-
 #[derive(Resource, Default)]
 struct GameState;
 
+#[derive(Resource)]
 pub struct GameHandle {
     game_state: Arc<Mutex<GameState>>,
     client: Option<Arc<Mutex<Client>>>,
@@ -26,6 +21,20 @@ pub struct GameHandle {
 }
 
 impl GameHandle {
+
+    fn add_player(&mut self, player: Player){
+        if let Some(server_arc) = &self.server {
+            if let Ok(mut server) = server_arc.lock() {
+                let new_key = server.gen_new_player_id();
+                server.synced_players.insert(new_key, player);
+            } else {
+                eprintln!("Failed to lock the mutex");
+            }
+        } else {
+            eprintln!("Server is None");
+        }
+    }
+
     fn launch_server(&mut self) -> Result<(), std::io::Error> {
         let server = Arc::new(Mutex::new(Server::new().unwrap()));
         server.lock().unwrap().start(Arc::clone(&server));
@@ -77,42 +86,38 @@ fn main() {
 
     let game_state = Arc::new(Mutex::new(GameState::default()));
 
-    let window = GameWindow {
-        width: 800.0,
-        height: 600.0,
-        title: String::from("Bevy Game"),
-    };
-
+    
+    let game_handle:GameHandle;
     if is_server {
-        GameHandle::construct_server(Arc::clone(&game_state));
+        game_handle = GameHandle::construct_server(Arc::clone(&game_state));
     } else {
-        GameHandle::construct_client(Arc::clone(&game_state), ip_string);
+        game_handle = GameHandle::construct_client(Arc::clone(&game_state), ip_string);
     }
 
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                title: window.title.clone(),
-                resolution: (window.width, window.height).into(),
+                title: String::from("Bevy Game"),
+                resolution: (800.0, 600.0).into(),
                 ..default()
             }),
             ..default()
         }))
-        .insert_resource(window)
         .insert_resource(GameState::default())
+        .insert_resource(game_handle)
         .add_systems(Startup, setup_camera)
-        .add_systems(Startup, spawn_player)
+        .add_systems(Startup, spawn_main_player)
         .add_systems(Update, move_player_system)
         .run();
 }
 
-#[derive(Component)]
-struct Player {
-    speed: f32,
-    owner_id: i32,
+
+fn spawn_main_player(commands: Commands, asset_server: Res<AssetServer>, mut game_handle: ResMut<GameHandle>) {
+    spawn_player(commands, asset_server, 0, &mut game_handle);
 }
 
-fn spawn_player(mut commands: Commands, _asset_server: Res<AssetServer>) {
+fn spawn_player(mut commands: Commands, _asset_server: Res<AssetServer>, owner_id: i32, game_handle: &mut ResMut<GameHandle>) {
+    let player = Player::new(200.0, owner_id);
     commands.spawn((
         Sprite {
             color: Color::srgb(0.3, 0.5, 0.8),
@@ -123,44 +128,15 @@ fn spawn_player(mut commands: Commands, _asset_server: Res<AssetServer>) {
         GlobalTransform::default(),
         Visibility::default(),
         InheritedVisibility::default(),
-        Player { speed: 200.0, owner_id: 0},
+        player.clone(),
     ));
+    game_handle.add_player(player);
 }
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2d::default());
 }
 
-impl Player {
-    fn move_player(&self, keyboard_input: &ButtonInput<KeyCode>, time: &Time, transform: &mut Transform) {
-        let mut direction = Vec3::ZERO;
-
-        if keyboard_input.pressed(KeyCode::KeyW) {
-            direction.y += 1.0;
-        }
-        if keyboard_input.pressed(KeyCode::KeyS) {
-            direction.y -= 1.0;
-        }
-        if keyboard_input.pressed(KeyCode::KeyD) {
-            direction.x += 1.0;
-        }
-        if keyboard_input.pressed(KeyCode::KeyA) {
-            direction.x -= 1.0;
-        }
-
-        transform.translation += direction.normalize_or_zero() * self.speed * time.delta_secs();
-    }
-}
-
-impl NetworkSync for Player{
-    fn get_owner(&self) -> i32{
-        self.owner_id
-    }
-
-    fn set_owner(&mut self, owner_id: i32) {
-        self.owner_id = owner_id;
-    }
-}
 
 fn move_player_system(
     keyboard_input: Res<ButtonInput<KeyCode>>,  
@@ -168,7 +144,7 @@ fn move_player_system(
     mut query: Query<(&Player, &mut Transform)>,
 ) {
     for (player, mut transform) in query.iter_mut() {
-        if player.get_owner() == 0{
+        if player.get_owner() == 0 {
             player.move_player(&keyboard_input, &time, &mut transform);
         }
     }

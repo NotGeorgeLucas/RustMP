@@ -1,5 +1,6 @@
 use crate::COMMS_PORT;
-use crate::message::Message;
+use crate::message::{Message,ObjectType};
+use crate::player::Player;
 use std::collections::HashMap;
 use std::net::{UdpSocket, SocketAddr};
 use std::io::Result;
@@ -12,6 +13,7 @@ use colored::*;
 pub struct Server {
     socket: Arc<Mutex<UdpSocket>>,
     user_map: HashMap<i32,SocketAddr>,
+    pub synced_players: HashMap<i32, Player>,
 }
 
 
@@ -25,6 +27,7 @@ impl Server {
         Ok(Server {
             socket: Arc::new(Mutex::new(socket)),
             user_map: HashMap::new(),
+            synced_players: HashMap::new(),
         })
     }
 
@@ -39,19 +42,33 @@ impl Server {
         key
     }
 
+    pub fn gen_new_player_id(&self) -> i32{
+        let mut key:i32 = 1;
+        loop {
+            if !self.synced_players.contains_key(&key){
+                break;
+            }
+            key+=1;
+        }
+        key
+    }
 
-    fn process_message(&mut self,message_received: &Message,client_address:SocketAddr) -> HashMap<String,String>{
+    fn process_message(&mut self,message_received: &Message,client_address:SocketAddr) -> HashMap<String,ObjectType>{
         let mut response_map = HashMap::new();
         let received_map = message_received.get_message_map();
         println!("{:?}",received_map);
         if received_map.contains_key("goal"){
             match received_map.get("goal"){
-                Some(goal) => match goal.as_str() {
+                Some(ObjectType::StringMsg(goal)) => match goal.as_str() {
                     "sync" => {
-                        response_map.insert(String::from("goal"), String::from("confirm connect"));
+                        response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("confirm connect")));
                         let new_id = self.gen_new_id();
                         self.user_map.insert(new_id, client_address);
-                        response_map.insert(String::from("id"), String::from(format!("{}",new_id)));
+                        response_map.insert(String::from("id"), ObjectType::Integer(new_id));
+                    },
+                    "get_sync_objects" => {
+                        response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("ret_sync_players")));
+                        response_map.insert(String::from("players"), ObjectType::PlayerMap(self.synced_players.clone()));
                     },
                     _ =>{
                         println!("Unknown message type");
@@ -59,6 +76,9 @@ impl Server {
                 }
                 None =>{
                     println!("Goal field empty");
+                }
+                _ =>{
+                    eprintln!("Invalid goal type!")
                 }
             }
         }
@@ -86,7 +106,7 @@ impl Server {
     }    
 
 
-    pub fn send_message(&self,message: &HashMap<String,String>,target:SocketAddr) -> Result<()> {
+    pub fn send_message(&self,message: &HashMap<String,ObjectType>,target:SocketAddr) -> Result<()> {
         if let Ok(message_struct) = Message::new(-1, message.clone()) {
             let message_bytes = bincode::serialize(&message_struct).unwrap();
             
@@ -114,7 +134,7 @@ impl Server {
         println!("{}", "═════════════════════════════".bold().bright_cyan());
         println!("{}", "  Server is up and running!".bold().bright_green());
         println!("{}", "═════════════════════════════".bold().bright_cyan());
-        self.user_map.insert(-1, SocketAddr::from_str("127.0.0.1:8080").unwrap());
+        self.user_map.insert(-1, SocketAddr::from_str(format!("127.0.0.1:{}",COMMS_PORT).as_str()).unwrap());
     }
 }
 

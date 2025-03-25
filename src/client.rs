@@ -1,4 +1,4 @@
-use crate::message::Message;
+use crate::message::{Message,ObjectType};
 use crate::COMMS_PORT;
 use std::collections::HashMap;
 use std::net::{UdpSocket, SocketAddr};
@@ -8,6 +8,7 @@ use std::thread;
 use std::sync::{Arc,Mutex};
 use std::time::Duration;
 use colored::*;
+use crate::player::Player;
 
 
 #[derive(Clone)]
@@ -15,6 +16,7 @@ pub struct Client {
     server_address: SocketAddr,
     socket: Arc<Mutex<UdpSocket>>,
     personal_id:i32,
+    pub synced_players: HashMap<i32, Player>,
 }
 
 
@@ -30,22 +32,31 @@ impl Client{
             server_address:SocketAddr::from_str(&server_address).unwrap(),
             socket:Arc::new(Mutex::new(socket)),
             personal_id:0,
+            synced_players: HashMap::new(),
         })
     }
     
 
-    fn process_message(&mut self,message_received: &Message) -> HashMap<String,String>{
+    fn process_message(&mut self,message_received: &Message) -> HashMap<String,ObjectType>{
 
         let mut response_map = HashMap::new();
         let received_map = message_received.get_message_map();
         if received_map.contains_key("goal"){
             match received_map.get("goal"){
-                Some(goal) => match goal.as_str() {
+                Some(ObjectType::StringMsg(goal)) => match goal.as_str() {
                     "confirm connect" => {
-                        if let Ok(new_id) = message_received.get_message_map().get("id").unwrap().parse(){
-                            self.personal_id = new_id;
+                        if let Some(ObjectType::Integer(new_id)) = message_received.get_message_map().get("id") {
+                            self.personal_id = *new_id;
                         }else{
                             eprint!("ID not a valid i32")
+                        }
+                    },
+                    "ret_sync_players" => {
+                        if let Some(ObjectType::PlayerMap(players)) = message_received.get_message_map().get("players"){
+                            self.synced_players = players.clone();
+                        }else{
+                            eprintln!("Invalid player map return type! Resending player list request.");
+                            response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("get_sync_players")));
                         }
                     },
                     _ =>{
@@ -54,6 +65,9 @@ impl Client{
                 }
                 None =>{
                     println!("Goal field empty");
+                }
+                _ =>{
+                    eprint!("Invalid goal type!")
                 }
             }
         }
@@ -71,7 +85,7 @@ impl Client{
 
                 if !response_map.is_empty(){
                     self.send_message(&response_map)?;
-                    println!("Sent response to {}", sender);
+                    println!("{}",format!("Sent response to {}", sender).bold().green());
                 }
             }
             Err(e) =>{
@@ -82,12 +96,12 @@ impl Client{
     }
 
 
-    pub fn send_message(&self,message: &HashMap<String,String>) -> Result<()> {
+    pub fn send_message(&self,message: &HashMap<String,ObjectType>) -> Result<()> {
         if let Ok(message_struct) = Message::new(-1, message.clone()){
             let message_bytes = bincode::serialize(&message_struct).unwrap();
             
             self.socket.lock().unwrap().send_to(&message_bytes, self.server_address)?;
-            println!("Sent packet to {}", self.server_address);
+            println!("{}",format!("Sent packet to {}", self.server_address).bold().green());
         }else{
             eprintln!("Failed to construct message");
         }
@@ -110,7 +124,7 @@ impl Client{
         });
         
         let mut connect_message = HashMap::new();
-        connect_message.insert(String::from("goal"), String::from("sync"));
+        connect_message.insert(String::from("goal"), ObjectType::StringMsg(String::from("sync")));
         for _ in [1..5]{
             if let Err(e) = self.send_message(&connect_message){
                 eprintln!("Sending message failed: {:?}", e);
@@ -123,5 +137,11 @@ impl Client{
                 break;
             }
         }
+        let mut getter_message = HashMap::new();
+        getter_message.insert(String::from("goal"), ObjectType::StringMsg(String::from("get_sync_players")));
+        if let Err(e) = self.send_message(&getter_message){
+            eprintln!("Sending message failed: {:?}", e);
+        }
+        
     }
 }
