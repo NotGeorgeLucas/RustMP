@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use std::sync::{Arc, Mutex};
 use RustMP::server::Server;
 use RustMP::client::Client;
+use RustMP::network_sync::NetworkSync;
 use bevy::input::keyboard::KeyCode;
 use bevy::input::ButtonInput;
 use bevy::app::Startup;
@@ -101,13 +102,14 @@ fn main() {
         .insert_resource(GameState::default())
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, spawn_player)
-        .add_systems(Update, move_player)
+        .add_systems(Update, move_player_system)
         .run();
 }
 
 #[derive(Component)]
 struct Player {
     speed: f32,
+    owner_id: i32,
 }
 
 fn spawn_player(mut commands: Commands, _asset_server: Res<AssetServer>) {
@@ -121,7 +123,7 @@ fn spawn_player(mut commands: Commands, _asset_server: Res<AssetServer>) {
         GlobalTransform::default(),
         Visibility::default(),
         InheritedVisibility::default(),
-        Player { speed: 200.0 },
+        Player { speed: 200.0, owner_id: 0},
     ));
 }
 
@@ -129,12 +131,8 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2d::default());
 }
 
-fn move_player(
-    keyboard_input: Res<ButtonInput<KeyCode>>,  
-    time: Res<Time>,                      
-    mut query: Query<(&Player, &mut Transform)>,
-) {
-    for (player, mut transform) in query.iter_mut() {
+impl Player {
+    fn move_player(&self, keyboard_input: &ButtonInput<KeyCode>, time: &Time, transform: &mut Transform) {
         let mut direction = Vec3::ZERO;
 
         if keyboard_input.pressed(KeyCode::KeyW) {
@@ -150,6 +148,28 @@ fn move_player(
             direction.x -= 1.0;
         }
 
-        transform.translation += direction.normalize_or_zero() * player.speed * time.delta_secs();
+        transform.translation += direction.normalize_or_zero() * self.speed * time.delta_secs();
+    }
+}
+
+impl NetworkSync for Player{
+    fn get_owner(&self) -> i32{
+        self.owner_id
+    }
+
+    fn set_owner(&mut self, owner_id: i32) {
+        self.owner_id = owner_id;
+    }
+}
+
+fn move_player_system(
+    keyboard_input: Res<ButtonInput<KeyCode>>,  
+    time: Res<Time>,                       
+    mut query: Query<(&Player, &mut Transform)>,
+) {
+    for (player, mut transform) in query.iter_mut() {
+        if player.get_owner() == 0{
+            player.move_player(&keyboard_input, &time, &mut transform);
+        }
     }
 }
