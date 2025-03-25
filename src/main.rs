@@ -40,6 +40,7 @@ impl eframe::App for LauncherApp {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             self.pending_launch = false;
             self.launch_game_after_closure(self.is_server.unwrap(), Some(self.text.clone())).expect("Failed to launch game main");
+            std::process::exit(0);
         }
         ctx.set_visuals(egui::Visuals {
             dark_mode: true,
