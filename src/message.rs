@@ -6,7 +6,8 @@ use crate::player::Player;
 pub enum ObjectType{
     StringMsg(String),
     Integer(i32),
-    PlayerMap(HashMap<i32, Player>)
+    PlayerMap(HashMap<i32, Player>),
+    Player(Player),
 }
 
 #[derive(Serialize, Deserialize,Debug,Clone)]

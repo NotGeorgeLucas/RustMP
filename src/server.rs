@@ -53,6 +53,14 @@ impl Server {
         key
     }
 
+    pub fn id_to_socket(&self, id: i32) -> Option<SocketAddr> {
+        if let Some(socket_addr) = self.user_map.get(&id) {
+            Some(*socket_addr)
+        } else {
+            None
+        }
+    }
+
     fn process_message(&mut self,message_received: &Message,client_address:SocketAddr) -> HashMap<String,ObjectType>{
         let mut response_map = HashMap::new();
         let received_map = message_received.get_message_map();

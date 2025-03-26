@@ -1,5 +1,7 @@
 use bevy::prelude::*;
+use RustMP::message::ObjectType;
 use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 use RustMP::server::Server;
 use RustMP::client::Client;
 use RustMP::network_sync::NetworkSync;
@@ -23,13 +25,26 @@ pub struct GameHandle {
 impl GameHandle {
 
     fn add_player(&mut self, player: Player){
+        println!("1");
         if let Some(server_arc) = &self.server {
-            if let Ok(mut server) = server_arc.lock() {
-                let new_key = server.gen_new_player_id();
-                server.synced_players.insert(new_key, player);
-            } else {
-                eprintln!("Failed to lock the mutex");
+            println!("2");
+            let server_lock = server_arc.lock().unwrap();
+            println!("3");
+            
+            let mut message= HashMap::new();
+            println!("4");
+            message.insert("goal".to_string(), ObjectType::StringMsg("add_player".to_string()));
+            println!("5");
+            message.insert("player".to_string(), ObjectType::Player(player));
+            println!("6");
+
+            if let Some(target) = server_lock.id_to_socket(-1){
+                println!("7");
+                if let Err(e) = server_lock.send_message(&message, target){
+                    eprintln!("Could not send message to self: {}",e);
+                }
             }
+
         } else {
             eprintln!("Server is None");
         }
