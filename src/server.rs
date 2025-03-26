@@ -3,17 +3,18 @@ use crate::message::{Message,ObjectType};
 use crate::player::Player;
 use std::collections::HashMap;
 use std::net::{UdpSocket, SocketAddr};
-use std::io::Result;
+use std::io::{Result,ErrorKind};
 use std::sync::{Arc,Mutex};
 use std::thread;
 use std::str::FromStr;
+use std::time::Duration;
 use colored::*;
 
 #[derive(Clone)]
 pub struct Server {
     socket: Arc<Mutex<UdpSocket>>,
     user_map: HashMap<i32,SocketAddr>,
-    pub synced_players: HashMap<i32, Player>,
+    pub synced_players: HashMap<i32, Player>, //🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
 }
 
 
@@ -23,6 +24,7 @@ impl Server {
     pub fn new() -> Result<Server> {
         let server_address = format!("0.0.0.0:{}",COMMS_PORT);
         let socket = UdpSocket::bind(server_address.clone()).unwrap();
+        socket.set_nonblocking(true)?;
 
         Ok(Server {
             socket: Arc::new(Mutex::new(socket)),
@@ -96,22 +98,36 @@ impl Server {
     
     fn receive_message(&mut self) -> Result<()> {
         let mut buffer = [0u8; 1024];
-        let (size, sender) = self.socket.lock().unwrap().recv_from(&mut buffer)?;
-    
-        match bincode::deserialize::<Message>(&buffer[..size]){
-            Ok(decoded) => {
-                let response_map = self.process_message(&decoded,sender);
-                if !response_map.is_empty(){
-                    self.send_message(&response_map, sender)?;
-                    println!("Sent response: {:?}",response_map);
+        
+        let (size, sender) = {
+            let socket = self.socket.lock().unwrap();
+            match socket.recv_from(&mut buffer) {
+                Ok(result) => result,
+                Err(e) => {
+                    if e.kind() != ErrorKind::WouldBlock {
+                        eprintln!("Error encountered while trying to receive message: {}", e);
+                    }
+                    return Ok(());
                 }
             }
-            Err(e) =>{
+        };
+    
+        match bincode::deserialize::<Message>(&buffer[..size]) {
+            Ok(decoded) => {
+                let response_map = self.process_message(&decoded, sender);
+                
+                if !response_map.is_empty() {
+                    self.send_message(&response_map, sender)?;
+                    println!("Sent response: {:?}", response_map);
+                }
+            }
+            Err(e) => {
                 println!("Failed to decode message: {}", e);
             }
         }
+        
         Ok(())
-    }    
+    }
 
 
     pub fn send_message(&self,message: &HashMap<String,ObjectType>,target:SocketAddr) -> Result<()> {
@@ -133,10 +149,13 @@ impl Server {
 
         let _receive_thread = thread::spawn(move || {
             loop {
-                let mut locked = mut_ref.lock().unwrap();
-                if let Err(e) = locked.receive_message() {
-                    eprintln!("Failed to receive message: {:?}", e);
+                {
+                    let mut locked = mut_ref.lock().unwrap();
+                    if let Err(e) = locked.receive_message() {
+                        eprintln!("Failed to receive message: {:?}", e);
+                    }
                 }
+                thread::sleep(Duration::from_millis(8));
             }
         });
         println!("{}", "═════════════════════════════".bold().bright_cyan());
