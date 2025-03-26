@@ -1,7 +1,5 @@
 use bevy::prelude::*;
-use RustMP::message::{Message,ObjectType};
 use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
 use RustMP::server::Server;
 use RustMP::client::Client;
 use RustMP::network_sync::NetworkSync;
@@ -26,25 +24,14 @@ impl GameHandle {
 
     fn add_player(&mut self, player: Player){
         if let Some(server_arc) = &self.server {
-            if let Ok(server) = server_arc.lock() {
-                let mut message: HashMap<String, ObjectType> = HashMap::new();
-                message.insert(String::from("goal"), ObjectType::StringMsg(String::from("player_join")));
-                message.insert(String::from("player"), ObjectType::Player(player));
-                server.tx.as_ref().unwrap().send(Message::new(-1,message).unwrap()).expect("Message failed to send");
-                println!("BEEEEEEEEEEEEERs");
+            if let Ok(mut server) = server_arc.lock() {
+                let new_key = server.gen_new_player_id();
+                server.synced_players.insert(new_key, player);
             } else {
                 eprintln!("Failed to lock the mutex");
             }
-        } else if let Some(client_arc) = &self.client{
-            if let Ok(client) = client_arc.lock() {
-                let mut message: HashMap<String, ObjectType> = HashMap::new();
-                message.insert(String::from("goal"), ObjectType::StringMsg(String::from("player_join")));
-                message.insert(String::from("player"), ObjectType::Player(player));
-                client.send_message(&message).expect("Message failed to send");
-                println!("BEEEEEEEEEEEEERs");
-            } else {
-                eprintln!("Failed to lock the mutex");
-            }
+        } else {
+            eprintln!("Server is None");
         }
     }
 
@@ -100,7 +87,7 @@ fn main() {
     let game_state = Arc::new(Mutex::new(GameState::default()));
 
     
-    let game_handle: GameHandle;
+    let game_handle:GameHandle;
     if is_server {
         game_handle = GameHandle::construct_server(Arc::clone(&game_state));
     } else {

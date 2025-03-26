@@ -109,6 +109,8 @@ impl Client{
         Ok(())
     }
 
+    
+
     pub fn start(&self, self_mutex: Arc<Mutex<Self>>) {
         let mut_ref = Arc::clone(&self_mutex);
 
