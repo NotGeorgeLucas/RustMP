@@ -1,4 +1,6 @@
 use crate::message::{Message,ObjectType};
+use crate::network_sync::NetworkSync;
+use crate::game_handle::GameHandle;
 use crate::COMMS_PORT;
 use std::collections::HashMap;
 use std::net::{UdpSocket, SocketAddr};
@@ -7,6 +9,8 @@ use std::str::FromStr;
 use std::thread;
 use std::sync::{Arc,Mutex};
 use std::time::Duration;
+use std::io::ErrorKind;
+use bevy::tasks::futures_lite::io;
 use colored::*;
 use crate::player::Player;
 
@@ -17,12 +21,13 @@ pub struct Client {
     socket: Arc<Mutex<UdpSocket>>,
     personal_id:i32,
     pub synced_players: HashMap<i32, Player>,
+    game_handle: Arc<Mutex<GameHandle>>,
 }
 
 
 
 impl Client{
-    pub fn new(server_address_ip: String) -> Result<Client> {
+    pub fn new(server_address_ip: String, game_handle_mutex: Arc<Mutex<GameHandle>>) -> Result<Client> {
         let mut server_address = server_address_ip.clone();
         server_address = server_address;
         server_address = format!("{}:{}",server_address,COMMS_PORT);
@@ -33,6 +38,7 @@ impl Client{
             socket:Arc::new(Mutex::new(socket)),
             personal_id:0,
             synced_players: HashMap::new(),
+            game_handle: game_handle_mutex,
         })
     }
     
@@ -45,18 +51,17 @@ impl Client{
             match received_map.get("goal"){
                 Some(ObjectType::StringMsg(goal)) => match goal.as_str() {
                     "confirm connect" => {
-                        if let Some(ObjectType::Integer(new_id)) = message_received.get_message_map().get("id") {
+                        if let Some(ObjectType::Integer(new_id)) = received_map.get("id") {
                             self.personal_id = *new_id;
                         }else{
-                            eprint!("ID not a valid i32")
+                            eprintln!("ID not a valid i32")
                         }
                     },
                     "ret_sync_players" => {
-                        if let Some(ObjectType::PlayerMap(players)) = message_received.get_message_map().get("players"){
+                        if let Some(ObjectType::PlayerMap(players)) = received_map.get("players"){
                             self.synced_players = players.clone();
                         }else{
-                            eprintln!("Invalid player map return type! Resending player list request.");
-                            response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("get_sync_players")));
+                            eprintln!("Invalid player map return type");
                         }
                     },
                     _ =>{
@@ -64,10 +69,10 @@ impl Client{
                     }
                 }
                 None =>{
-                    println!("Goal field empty");
+                    eprintln!("Goal field empty");
                 }
                 _ =>{
-                    eprint!("Invalid goal type!")
+                    eprintln!("Invalid goal type!")
                 }
             }
         }
@@ -77,24 +82,36 @@ impl Client{
     
     fn receive_message(&mut self) -> Result<()> {
         let mut buffer = [0u8; 1024];
-        let (size, sender) = self.socket.lock().unwrap().recv_from(&mut buffer)?;
-    
-        match bincode::deserialize::<Message>(&buffer[..size]){
-            Ok(decoded) => {
-                let response_map = self.process_message(&decoded);
-
-                if !response_map.is_empty(){
-                    self.send_message(&response_map)?;
-                    println!("{}",format!("Sent response to {}", sender).bold().green());
+        
+        let (size, _) = {
+            let socket = self.socket.lock().unwrap();
+            match socket.recv_from(&mut buffer) {
+                Ok(result) => result,
+                Err(e) => {
+                    if e.kind() != ErrorKind::WouldBlock {
+                        eprintln!("Error encountered while trying to receive message: {}", e);
+                    }
+                    return Ok(());
                 }
             }
-            Err(e) =>{
+        };
+    
+        match bincode::deserialize::<Message>(&buffer[..size]) {
+            Ok(decoded) => {
+                let response_map = self.process_message(&decoded);
+                
+                if !response_map.is_empty() {
+                    self.send_message(&response_map)?;
+                    println!("Sent response: {:?}", response_map);
+                }
+            }
+            Err(e) => {
                 println!("Failed to decode message: {}", e);
             }
         }
+        
         Ok(())
     }
-
 
     pub fn send_message(&self,message: &HashMap<String,ObjectType>) -> Result<()> {
         if let Ok(message_struct) = Message::new(-1, message.clone()){
@@ -107,6 +124,30 @@ impl Client{
         }
 
         Ok(())
+    }
+
+
+    pub fn initial_add_player(&self, player: Player) -> Result<i32> {
+        
+        let mut message= HashMap::new();
+
+        message.insert("goal".to_string(), ObjectType::StringMsg("get_sync_players".to_string()));
+        message.insert("player".to_string(), ObjectType::Player(player));
+
+        for _ in 1..5{
+            if let Err(e) = self.send_message(&message){
+                eprintln!("Could not send message to self: {}",e);
+            }
+            thread::sleep(Duration::from_millis(300));
+            if !self.synced_players.is_empty(){
+                for(id, player) in self.synced_players.iter(){
+                    if player.get_owner() == self.personal_id{
+                        return Ok(*id);
+                    }
+                }
+            }
+        }
+        Err(io::Error::new(io::ErrorKind::Other, "Could not receive player map in 5 tries"))
     }
 
     
@@ -136,11 +177,6 @@ impl Client{
                 println!("{}", "═════════════════════════════".bold().bright_cyan());
                 break;
             }
-        }
-        let mut getter_message = HashMap::new();
-        getter_message.insert(String::from("goal"), ObjectType::StringMsg(String::from("get_sync_players")));
-        if let Err(e) = self.send_message(&getter_message){
-            eprintln!("Sending message failed: {:?}", e);
         }
         
     }

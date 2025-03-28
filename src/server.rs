@@ -1,3 +1,4 @@
+use crate::game_handle::GameHandle;
 use crate::COMMS_PORT;
 use crate::message::{Message,ObjectType};
 use crate::player::Player;
@@ -14,14 +15,15 @@ use colored::*;
 pub struct Server {
     socket: Arc<Mutex<UdpSocket>>,
     user_map: HashMap<i32,SocketAddr>,
-    pub synced_players: HashMap<i32, Player>, //🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+    synced_players: HashMap<i32, Player>, //    🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+    game_handle: Arc<Mutex<GameHandle>>,
 }
 
 
 
 
 impl Server {
-    pub fn new() -> Result<Server> {
+    pub fn new(game_handle_mutex: Arc<Mutex<GameHandle>>) -> Result<Server> {
         let server_address = format!("0.0.0.0:{}",COMMS_PORT);
         let socket = UdpSocket::bind(server_address.clone()).unwrap();
         socket.set_nonblocking(true)?;
@@ -30,6 +32,7 @@ impl Server {
             socket: Arc::new(Mutex::new(socket)),
             user_map: HashMap::new(),
             synced_players: HashMap::new(),
+            game_handle: game_handle_mutex,
         })
     }
 
@@ -77,8 +80,44 @@ impl Server {
                         response_map.insert(String::from("id"), ObjectType::Integer(new_id));
                     },
                     "get_sync_objects" => {
-                        response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("ret_sync_players")));
-                        response_map.insert(String::from("players"), ObjectType::PlayerMap(self.synced_players.clone()));
+                        if let Some(new_player) = received_map.get("player"){
+                            let new_id = self.gen_new_player_id();
+                            match new_player {
+                                ObjectType::Player(np) => {
+                                    self.synced_players.insert(new_id,*np);
+                                    response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("ret_sync_players")));
+                                    response_map.insert(String::from("players"), ObjectType::PlayerMap(self.synced_players.clone()));
+                                },
+                                _ => {
+                                    eprintln!("plaer field not a player struct");
+                                }
+                            }
+                        }else{
+                            eprintln!("player field not found in get_sync_objects message");
+                        }
+                    },
+                    "add_player" => {
+                        let mut new_id: Option<i32> = None;
+                        let mut new_player: Option<Player> = None;
+                        if let Some(id) = received_map.get("id"){
+                            match id{
+                                ObjectType::Integer(val) => {new_id = Some(*val);},
+                                _ => {eprintln!("Object id not i32")},
+                            }
+                        }else{
+                            eprintln!("ID field not found in message");
+                        }
+                        if let Some(pl) = received_map.get("player"){
+                            match pl{
+                                ObjectType::Player(pl_val) => {new_player = Some(*pl_val);},
+                                _ => {eprintln!("Player not a valid player struct")},
+                            }
+                        }else{
+                            eprintln!("ID field not found in message");
+                        }
+                        if new_id.is_some() && new_player.is_some(){
+                            self.synced_players.insert(new_id.unwrap(), new_player.unwrap());
+                        }
                     },
                     _ =>{
                         println!("Unknown message type");

@@ -6,10 +6,11 @@ use bevy::ecs::component::Component;
 use crate::network_sync::NetworkSync;
 
 
-#[derive(Component,Clone,Debug,Serialize,Deserialize)]
+#[derive(Component,Clone,Copy,Debug,Serialize,Deserialize)]
 pub struct Player {
     speed: f32,
     owner_id: i32,
+    object_id: i32,
 }
 impl Player {
     pub fn move_player(&self, keyboard_input: &Res<ButtonInput<KeyCode>>, time: &Res<Time>, transform: &mut Transform) {
@@ -32,7 +33,7 @@ impl Player {
     }
 
     pub fn new(speed:f32, player_id: i32) -> Self{
-        Player { speed: speed, owner_id: player_id }
+        Player { speed: speed, owner_id: player_id, object_id: -1 }
     }
 }
 
@@ -43,5 +44,13 @@ impl NetworkSync for Player{
 
     fn set_owner(&mut self, owner_id: i32) {
         self.owner_id = owner_id;
+    }
+
+    fn get_object_id(&self) -> i32 {
+        self.object_id
+    }
+
+    fn set_object_id(&mut self, object_id: i32) {
+        self.object_id = object_id;
     }
 }
