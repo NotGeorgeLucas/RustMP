@@ -40,5 +40,7 @@ pub fn spawn_player(
         InheritedVisibility::default(),
         player.clone(),
     ));
-    game_handle.add_player(player,commands,_asset_server,owner_id);
+    if owner_id == 0 {
+        game_handle.add_player(player,commands,_asset_server,owner_id);
+    }
 }
