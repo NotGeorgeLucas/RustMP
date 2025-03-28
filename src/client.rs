@@ -20,7 +20,7 @@ pub struct Client {
     server_address: SocketAddr,
     socket: Arc<Mutex<UdpSocket>>,
     personal_id:i32,
-    pub synced_players: HashMap<i32, Player>,
+    synced_players: HashMap<i32, Player>,
     game_handle: Arc<Mutex<GameHandle>>,
 }
 
@@ -151,6 +151,10 @@ impl Client{
     }
 
     
+    pub fn get_synced_players(&self) -> HashMap<i32, Player> { 
+        self.synced_players.clone()
+    }
+
 
     pub fn start(&self, self_mutex: Arc<Mutex<Self>>) {
         let mut_ref = Arc::clone(&self_mutex);

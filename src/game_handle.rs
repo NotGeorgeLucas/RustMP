@@ -5,7 +5,8 @@ use crate::server::Server;
 use crate::player::Player;
 use crate::network_sync::NetworkSync;
 use crate::message::ObjectType;
-use bevy::prelude::Resource;
+use crate::player_spawner;
+use bevy::prelude::{Resource,AssetServer,Res,Commands};
 
 
 
@@ -17,28 +18,41 @@ pub struct GameHandle {
 
 impl GameHandle {
 
-    pub fn add_player(&mut self, mut player: Player){
+    pub fn add_player(
+        &mut self,
+        mut player: Player,
+        commands: &mut Commands, 
+        _asset_server: &Res<AssetServer>, 
+        owner_id: i32,
+    ) {
         if let Some(server_arc) = &self.server {
             let server_lock = server_arc.lock().unwrap();
-            
-
+    
             let object_id = server_lock.gen_new_player_id();
             player.set_object_id(object_id);
-            let mut message= HashMap::new();
+            let mut message = HashMap::new();
             message.insert("goal".to_string(), ObjectType::StringMsg("add_player".to_string()));
             message.insert("id".to_string(), ObjectType::Integer(object_id));
             message.insert("player".to_string(), ObjectType::Player(player));
-
-            if let Some(target) = server_lock.id_to_socket(-1){
-                if let Err(e) = server_lock.send_message(&message, target){
-                    eprintln!("Could not send message to self: {}",e);
+    
+            if let Some(target) = server_lock.id_to_socket(-1) {
+                if let Err(e) = server_lock.send_message(&message, target) {
+                    eprintln!("Could not send message to self: {}", e);
                 }
             }
-
         } else if let Some(client_arc) = &self.client {
             let client_lock = client_arc.lock().unwrap();
-            
+    
             player.set_object_id(client_lock.initial_add_player(player).expect("Could not add the current player"));
+    
+            let player_map = client_lock.get_synced_players();
+            drop(client_lock);
+
+            for (id, synced_player) in player_map.iter() {
+                if synced_player.get_object_id() != *id {
+                    player_spawner::spawn_player(commands, _asset_server, -1, self);
+                }
+            }
         }
     }
 
