@@ -1,6 +1,6 @@
 use eframe::egui;
 use std::process::Command;
-use RustMP::COMMS_PORT;
+use rust_mp::COMMS_PORT;
 
 struct LauncherApp {
     text: String,

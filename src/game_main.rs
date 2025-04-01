@@ -1,9 +1,9 @@
 use bevy::prelude::*;
-use RustMP::network_sync::NetworkSync;
-use RustMP::player::Player;
-use RustMP::game_handle::GameHandle;
-use RustMP::player_spawner;
-use RustMP::player_spawner::GameHandleResource;
+use rust_mp::network_sync::NetworkSync;
+use rust_mp::player::Player;
+use rust_mp::game_handle::GameHandle;
+use rust_mp::player_spawner;
+use rust_mp::player_spawner::GameHandleResource;
 use bevy::input::keyboard::KeyCode;
 use bevy::input::ButtonInput;
 
