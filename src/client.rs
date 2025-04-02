@@ -1,6 +1,8 @@
 use crate::message::{Message,ObjectType};
 use crate::network_sync::NetworkSync;
 use crate::game_handle::GameHandle;
+use crate::player::Player;
+use crate::COMMS_PORT;
 use std::collections::HashMap;
 use std::net::{UdpSocket, SocketAddr};
 use std::io::Result;
@@ -11,7 +13,6 @@ use std::time::Duration;
 use std::io::ErrorKind;
 use bevy::tasks::futures_lite::io;
 use colored::*;
-use crate::player::Player;
 
 
 #[derive(Clone)]
@@ -29,7 +30,7 @@ impl Client{
     pub fn new(server_address_ip: String, game_handle_mutex: Arc<Mutex<GameHandle>>) -> Result<Client> {
         let mut server_address = server_address_ip.clone();
         server_address = server_address;
-        let socket = UdpSocket::bind("0.0.0.0:0")?;
+        let socket = UdpSocket::bind(format!("0.0.0.0:{}",COMMS_PORT))?;
         socket.set_nonblocking(true)?;
         
         Ok(Client{
@@ -46,6 +47,7 @@ impl Client{
 
         let mut response_map = HashMap::new();
         let received_map = message_received.get_message_map();
+        println!("{:?}",received_map);
         if received_map.contains_key("goal"){
             match received_map.get("goal"){
                 Some(ObjectType::StringMsg(goal)) => match goal.as_str() {
@@ -172,7 +174,7 @@ impl Client{
         
         let mut connect_message = HashMap::new();
         connect_message.insert(String::from("goal"), ObjectType::StringMsg(String::from("sync")));
-        for _ in [1..5]{
+        for _ in [1..6]{
             if let Err(e) = self.send_message(&connect_message){
                 eprintln!("Sending message failed: {:?}", e);
             }

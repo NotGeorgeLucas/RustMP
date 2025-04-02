@@ -76,7 +76,7 @@ impl Server {
                     "sync" => {
                         response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("confirm connect")));
                         let new_id = self.gen_new_id();
-                        self.user_map.insert(new_id, client_address);
+                        self.user_map.insert(new_id,(client_address.ip(),COMMS_PORT).into());
                         response_map.insert(String::from("id"), ObjectType::Integer(new_id));
                     },
                     "get_sync_players" => {
