@@ -30,7 +30,8 @@ impl Client{
         let mut server_address = server_address_ip.clone();
         server_address = server_address;
         let socket = UdpSocket::bind("0.0.0.0:0")?;
-        println!("Provided IP: {}",server_address);
+        socket.set_nonblocking(true)?;
+        
         Ok(Client{
             server_address:SocketAddr::from_str(&server_address).unwrap(),
             socket:Arc::new(Mutex::new(socket)),
@@ -132,11 +133,11 @@ impl Client{
         message.insert("goal".to_string(), ObjectType::StringMsg("get_sync_players".to_string()));
         message.insert("player".to_string(), ObjectType::Player(player));
 
-        for _ in 1..5{
+        for _ in 1..6{
             if let Err(e) = self.send_message(&message){
                 eprintln!("Could not send message to self: {}",e);
             }
-            thread::sleep(Duration::from_millis(300));
+            thread::sleep(Duration::from_secs(2));
             if !self.synced_players.is_empty(){
                 for(id, player) in self.synced_players.iter(){
                     if player.get_owner() == self.personal_id{
@@ -159,10 +160,13 @@ impl Client{
 
         let _receive_thread = thread::spawn(move || {
             loop {
-                let mut locked = mut_ref.lock().unwrap();
-                if let Err(e) = locked.receive_message() {
-                    eprintln!("Failed to receive message: {:?}", e);
+                {
+                    let mut locked = mut_ref.lock().unwrap();
+                    if let Err(e) = locked.receive_message() {
+                        eprintln!("Failed to receive message: {:?}", e);
+                    }
                 }
+                thread::sleep(Duration::from_millis(8));
             }
         });
         

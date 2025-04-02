@@ -79,7 +79,7 @@ impl Server {
                         self.user_map.insert(new_id, client_address);
                         response_map.insert(String::from("id"), ObjectType::Integer(new_id));
                     },
-                    "get_sync_objects" => {
+                    "get_sync_players" => {
                         if let Some(new_player) = received_map.get("player"){
                             let new_id = self.gen_new_player_id();
                             match new_player {
