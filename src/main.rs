@@ -1,6 +1,6 @@
 use eframe::egui;
 use std::process::Command;
-use rust_mp::COMMS_PORT;
+use rust_mp::SERVER_PORT;
 
 struct LauncherApp {
     text: String,
@@ -27,7 +27,7 @@ impl LauncherApp {
 
     fn launch_game_after_closure(&mut self,is_server: bool, ip_string: Option<String>) -> Result<(),std::io::Error>{
         Command::new("target/debug/game_main")
-            .args(format!("{} {}:{}",is_server,ip_string.unwrap(),COMMS_PORT).split_whitespace())
+            .args(format!("{} {}:{}",is_server,ip_string.unwrap(),SERVER_PORT).split_whitespace())
             .spawn()?;
         Ok(())
     }

@@ -6,4 +6,5 @@ pub mod player;
 pub mod game_handle;
 pub mod player_spawner;
 
-pub const COMMS_PORT:u16 = 13882;
+pub const SERVER_PORT:u16 = 13882;
+pub const CLIENT_PORT:u16 = 28831;

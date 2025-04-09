@@ -1,5 +1,5 @@
 use crate::game_handle::GameHandle;
-use crate::COMMS_PORT;
+use crate::{CLIENT_PORT, SERVER_PORT};
 use crate::message::{Message,ObjectType};
 use crate::player::Player;
 use std::collections::HashMap;
@@ -24,7 +24,7 @@ pub struct Server {
 
 impl Server {
     pub fn new(game_handle_mutex: Arc<Mutex<GameHandle>>) -> Result<Server> {
-        let server_address = format!("0.0.0.0:{}",COMMS_PORT);
+        let server_address = format!("0.0.0.0:{}",SERVER_PORT);
         let socket = UdpSocket::bind(server_address.clone()).unwrap();
         socket.set_nonblocking(true)?;
 
@@ -76,7 +76,7 @@ impl Server {
                     "sync" => {
                         response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("confirm connect")));
                         let new_id = self.gen_new_id();
-                        self.user_map.insert(new_id,(client_address.ip(),COMMS_PORT).into());
+                        self.user_map.insert(new_id,(client_address.ip(),CLIENT_PORT).into());
                         response_map.insert(String::from("id"), ObjectType::Integer(new_id));
                     },
                     "get_sync_players" => {
@@ -200,7 +200,7 @@ impl Server {
         println!("{}", "═════════════════════════════".bold().bright_cyan());
         println!("{}", "  Server is up and running!".bold().bright_green());
         println!("{}", "═════════════════════════════".bold().bright_cyan());
-        self.user_map.insert(-1, SocketAddr::from_str(format!("127.0.0.1:{}",COMMS_PORT).as_str()).unwrap());
+        self.user_map.insert(-1, SocketAddr::from_str(format!("127.0.0.1:{}",SERVER_PORT).as_str()).unwrap());
     }
 }
 

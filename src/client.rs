@@ -2,7 +2,8 @@ use crate::message::{Message,ObjectType};
 use crate::network_sync::NetworkSync;
 use crate::game_handle::GameHandle;
 use crate::player::Player;
-use crate::COMMS_PORT;
+use crate::CLIENT_PORT;
+use core::panic;
 use std::collections::HashMap;
 use std::net::{UdpSocket, SocketAddr};
 use std::io::Result;
@@ -30,7 +31,8 @@ impl Client{
     pub fn new(server_address_ip: String, game_handle_mutex: Arc<Mutex<GameHandle>>) -> Result<Client> {
         let mut server_address = server_address_ip.clone();
         server_address = server_address;
-        let socket = UdpSocket::bind(format!("0.0.0.0:{}",COMMS_PORT))?;
+        let socket = UdpSocket::bind(format!("0.0.0.0:{}",CLIENT_PORT))?;
+        println!("Client bound to: {:?}", socket.local_addr()?);
         socket.set_nonblocking(true)?;
         
         Ok(Client{
@@ -87,7 +89,9 @@ impl Client{
         let (size, _) = {
             let socket = self.socket.lock().unwrap();
             match socket.recv_from(&mut buffer) {
-                Ok(result) => result,
+                Ok(result) => {
+                    result
+                },
                 Err(e) => {
                     if e.kind() != ErrorKind::WouldBlock {
                         eprintln!("Error encountered while trying to receive message: {}", e);
@@ -96,7 +100,6 @@ impl Client{
                 }
             }
         };
-    
         match bincode::deserialize::<Message>(&buffer[..size]) {
             Ok(decoded) => {
                 let response_map = self.process_message(&decoded);
@@ -174,7 +177,7 @@ impl Client{
         
         let mut connect_message = HashMap::new();
         connect_message.insert(String::from("goal"), ObjectType::StringMsg(String::from("sync")));
-        for _ in [1..6]{
+        for _ in 1..6{
             if let Err(e) = self.send_message(&connect_message){
                 eprintln!("Sending message failed: {:?}", e);
             }
@@ -183,9 +186,10 @@ impl Client{
                 println!("{}", "═════════════════════════════".bold().bright_cyan());
                 println!("{}", "  Client is up and running!".bold().bright_green());
                 println!("{}", "═════════════════════════════".bold().bright_cyan());
-                break;
+                return;
             }
         }
+        panic!("Could not connect to the server and receive an ID");
         
     }
 }
