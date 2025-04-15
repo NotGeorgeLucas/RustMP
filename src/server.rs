@@ -1,4 +1,5 @@
 use crate::game_handle::GameHandle;
+use crate::network_sync::NetworkSync;
 use crate::{CLIENT_PORT, SERVER_PORT};
 use crate::message::{Message,ObjectType};
 use crate::player::Player;
@@ -72,55 +73,63 @@ impl Server {
         println!("{:?}",received_map);
         if received_map.contains_key("goal"){
             match received_map.get("goal"){
-                Some(ObjectType::StringMsg(goal)) => match goal.as_str() {
-                    "sync" => {
-                        response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("confirm connect")));
-                        let new_id = self.gen_new_id();
-                        self.user_map.insert(new_id,(client_address.ip(),CLIENT_PORT).into());
-                        response_map.insert(String::from("id"), ObjectType::Integer(new_id));
-                    },
-                    "get_sync_players" => {
-                        if let Some(new_player) = received_map.get("player"){
-                            let new_id = self.gen_new_player_id();
-                            match new_player {
-                                ObjectType::Player(np) => {
-                                    self.synced_players.insert(new_id,*np);
-                                    response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("ret_sync_players")));
-                                    response_map.insert(String::from("players"), ObjectType::PlayerMap(self.synced_players.clone()));
-                                },
-                                _ => {
-                                    eprintln!("plaer field not a player struct");
+                Some(ObjectType::StringMsg(goal)) => {
+                    println!("Received message with goal: {}", goal.as_str().bold());
+                    match goal.as_str() {
+                        "sync" => {
+                            response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("confirm connect")));
+                            let new_id = self.gen_new_id();
+                            self.user_map.insert(new_id,(client_address.ip(),CLIENT_PORT).into());
+                            response_map.insert(String::from("id"), ObjectType::Integer(new_id));
+                        },
+                        "get_sync_players" => {
+                            if let Some(new_player) = received_map.get("player"){
+                                let new_id = self.gen_new_player_id();
+                                match new_player {
+                                    ObjectType::Player(np) => {
+                                        let mut players_clone = self.synced_players.clone();
+                                        for (_, player) in players_clone.iter_mut(){
+                                            player.set_owner(-1);
+                                        }
+                                        self.synced_players.insert(new_id,*np);
+                                        players_clone.insert(new_id, *np);
+                                        response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("ret_sync_players")));
+                                        response_map.insert(String::from("players"), ObjectType::PlayerMap(players_clone));
+                                    },
+                                    _ => {
+                                        eprintln!("player field not a player struct");
+                                    }
                                 }
+                            }else{
+                                eprintln!("player field not found in get_sync_objects message");
                             }
-                        }else{
-                            eprintln!("player field not found in get_sync_objects message");
-                        }
-                    },
-                    "add_player" => {
-                        let mut new_id: Option<i32> = None;
-                        let mut new_player: Option<Player> = None;
-                        if let Some(id) = received_map.get("id"){
-                            match id{
-                                ObjectType::Integer(val) => {new_id = Some(*val);},
-                                _ => {eprintln!("Object id not i32")},
+                        },
+                        "add_player" => {
+                            let mut new_id: Option<i32> = None;
+                            let mut new_player: Option<Player> = None;
+                            if let Some(id) = received_map.get("id"){
+                                match id{
+                                    ObjectType::Integer(val) => {new_id = Some(*val);},
+                                    _ => {eprintln!("Object id not i32")},
+                                }
+                            }else{
+                                eprintln!("ID field not found in message");
                             }
-                        }else{
-                            eprintln!("ID field not found in message");
-                        }
-                        if let Some(pl) = received_map.get("player"){
-                            match pl{
-                                ObjectType::Player(pl_val) => {new_player = Some(*pl_val);},
-                                _ => {eprintln!("Player not a valid player struct")},
+                            if let Some(pl) = received_map.get("player"){
+                                match pl{
+                                    ObjectType::Player(pl_val) => {new_player = Some(*pl_val);},
+                                    _ => {eprintln!("Player not a valid player struct")},
+                                }
+                            }else{
+                                eprintln!("ID field not found in message");
                             }
-                        }else{
-                            eprintln!("ID field not found in message");
+                            if new_id.is_some() && new_player.is_some(){
+                                self.synced_players.insert(new_id.unwrap(), new_player.unwrap());
+                            }
+                        },
+                        _ =>{
+                            println!("Unknown message type");
                         }
-                        if new_id.is_some() && new_player.is_some(){
-                            self.synced_players.insert(new_id.unwrap(), new_player.unwrap());
-                        }
-                    },
-                    _ =>{
-                        println!("Unknown message type");
                     }
                 }
                 None =>{
@@ -178,9 +187,8 @@ impl Server {
         }else{
             eprintln!("Failed to create message: Message malformed");
         }
-        Ok(())
         
-
+        Ok(())
     }
 
     pub fn start(&mut self, self_mutex: Arc<Mutex<Self>>) {
@@ -197,9 +205,6 @@ impl Server {
                 thread::sleep(Duration::from_millis(8));
             }
         });
-        println!("{}", "═════════════════════════════".bold().bright_cyan());
-        println!("{}", "  Server is up and running!".bold().bright_green());
-        println!("{}", "═════════════════════════════".bold().bright_cyan());
         self.user_map.insert(-1, SocketAddr::from_str(format!("127.0.0.1:{}",SERVER_PORT).as_str()).unwrap());
     }
 }
