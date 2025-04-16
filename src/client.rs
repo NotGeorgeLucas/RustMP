@@ -1,5 +1,5 @@
 use crate::message::{Message,ObjectType};
-use crate::game_handle::GameHandle;
+//use crate::game_handle::GameHandle;
 use crate::player::Player;
 use crate::CLIENT_PORT;
 use std::collections::HashMap;
@@ -11,6 +11,7 @@ use std::sync::{Arc, Mutex, mpsc::{self, Sender, Receiver}};
 use std::time::Duration;
 use std::io::ErrorKind;
 use colored::Colorize;
+use macroquad_platformer::World;
 
 #[derive(Clone)]
 pub struct Client {
@@ -18,14 +19,15 @@ pub struct Client {
     socket: Arc<Mutex<UdpSocket>>,
     pub personal_id:i32,
     synced_players: HashMap<i32, Player>,
-    game_handle: Arc<Mutex<GameHandle>>,
+    world: Arc<Mutex<World>>,
+    //game_handle: Arc<Mutex<GameHandle>>,
     tx: Option<Sender<HashMap<String, ObjectType>>>,
 }
 
 
 
 impl Client{
-    pub fn new(server_address_ip: String, game_handle_mutex: Arc<Mutex<GameHandle>>) -> Result<Client> {
+    pub fn new(server_address_ip: String, /*game_handle_mutex: Arc<Mutex<GameHandle>>*/ world: Arc<Mutex<World>>) -> Result<Client> {
         let mut server_address = server_address_ip.clone();
         server_address = server_address;
         let socket = UdpSocket::bind(format!("0.0.0.0:{}",CLIENT_PORT))?;
@@ -37,9 +39,15 @@ impl Client{
             socket:Arc::new(Mutex::new(socket)),
             personal_id:0,
             synced_players: HashMap::new(),
-            game_handle: game_handle_mutex,
+            world: world,
+            //game_handle: game_handle_mutex,
             tx: None
         })
+    }
+
+
+    pub fn get_world(&self) -> Arc<Mutex<World>> {
+        Arc::clone(&self.world)
     }
     
 
@@ -62,7 +70,12 @@ impl Client{
                         },
                         "ret_sync_players" => {
                             if let Some(ObjectType::PlayerMap(players)) = received_map.get("players"){
-                                self.synced_players = players.clone();
+                                let mut locked_world = self.world.lock().unwrap();
+                                let player_map = players
+                                    .iter()
+                                    .map(|(key, pl)| (key.clone(), Player::construct_from_wrapper(*pl, &mut locked_world)))
+                                    .collect();
+                                self.synced_players = player_map;
                             }else{
                                 eprintln!("Invalid player map return type");
                             }

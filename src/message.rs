@@ -1,13 +1,13 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
-use crate::player::Player;
+use crate::player::DataWrapper;
 
 #[derive(Serialize, Deserialize,Debug,Clone)]
 pub enum ObjectType{
     StringMsg(String),
     Integer(i32),
-    PlayerMap(HashMap<i32, Player>),
-    Player(Player),
+    PlayerMap(HashMap<i32, DataWrapper>),
+    Player(DataWrapper),
 }
 
 #[derive(Serialize, Deserialize,Debug,Clone)]

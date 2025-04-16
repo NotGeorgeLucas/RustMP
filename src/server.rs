@@ -1,8 +1,8 @@
-use crate::game_handle::GameHandle;
+//use crate::game_handle::GameHandle;
 use crate::network_sync::NetworkSync;
 use crate::{CLIENT_PORT, SERVER_PORT};
 use crate::message::{Message,ObjectType};
-use crate::player::Player;
+use crate::player::{DataWrapper, Player};
 use std::collections::HashMap;
 use std::net::{UdpSocket, SocketAddr};
 use std::io::{Result,ErrorKind};
@@ -11,20 +11,22 @@ use std::thread;
 use std::str::FromStr;
 use std::time::Duration;
 use colored::*;
+use macroquad_platformer::World;
 
 #[derive(Clone)]
 pub struct Server {
     socket: Arc<Mutex<UdpSocket>>,
     user_map: HashMap<i32,SocketAddr>,
     synced_players: HashMap<i32, Player>, //    🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-    game_handle: Arc<Mutex<GameHandle>>,
+    world: Arc<Mutex<World>>,
+    //game_handle: Arc<Mutex<GameHandle>>,
 }
 
 
 
 
 impl Server {
-    pub fn new(game_handle_mutex: Arc<Mutex<GameHandle>>) -> Result<Server> {
+    pub fn new(/*game_handle_mutex: Arc<Mutex<GameHandle>>*/ world:Arc<Mutex<World>>) -> Result<Server> {
         let server_address = format!("0.0.0.0:{}",SERVER_PORT);
         let socket = UdpSocket::bind(server_address.clone()).unwrap();
         socket.set_nonblocking(true)?;
@@ -33,7 +35,8 @@ impl Server {
             socket: Arc::new(Mutex::new(socket)),
             user_map: HashMap::new(),
             synced_players: HashMap::new(),
-            game_handle: game_handle_mutex,
+            world: world
+            //game_handle: game_handle_mutex,
         })
     }
 
@@ -67,6 +70,12 @@ impl Server {
         }
     }
 
+
+    pub fn get_world(&self) -> Arc<Mutex<World>> {
+        Arc::clone(&self.world)
+    }
+
+
     fn process_message(&mut self,message_received: &Message,client_address:SocketAddr) -> HashMap<String,ObjectType>{
         let mut response_map = HashMap::new();
         let received_map = message_received.get_message_map();
@@ -91,10 +100,15 @@ impl Server {
                                         for (_, player) in players_clone.iter_mut(){
                                             player.set_owner(-1);
                                         }
-                                        self.synced_players.insert(new_id,*np);
-                                        players_clone.insert(new_id, *np);
+                                        let mut locked_world = self.world.lock().unwrap();
+                                        self.synced_players.insert(new_id,Player::construct_from_wrapper(*np,&mut locked_world));
+                                        players_clone.insert(new_id, Player::construct_from_wrapper(*np,&mut locked_world));
                                         response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("ret_sync_players")));
-                                        response_map.insert(String::from("players"), ObjectType::PlayerMap(players_clone));
+                                        let wrapper_map: HashMap<i32, DataWrapper> = players_clone
+                                            .iter()
+                                            .map(|(key, pl)| (key.clone(), pl.wrapper)) 
+                                            .collect();
+                                        response_map.insert(String::from("players"), ObjectType::PlayerMap(wrapper_map));
                                     },
                                     _ => {
                                         eprintln!("player field not a player struct");
@@ -117,7 +131,10 @@ impl Server {
                             }
                             if let Some(pl) = received_map.get("player"){
                                 match pl{
-                                    ObjectType::Player(pl_val) => {new_player = Some(*pl_val);},
+                                    ObjectType::Player(pl_val) => {
+                                        let mut locked_world = self.world.lock().unwrap();
+                                        new_player = Some(Player::construct_from_wrapper(*pl_val,&mut locked_world));
+                                    },
                                     _ => {eprintln!("Player not a valid player struct")},
                                 }
                             }else{

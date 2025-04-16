@@ -3,12 +3,9 @@ use macroquad::prelude::*;
 use macroquad_tiled as tiled;
 
 use macroquad_platformer::*;
-use rust_mp::network_sync::NetworkSync;
-use rust_mp::player::Player;
+use rust_mp::player::*;
 use rust_mp::game_handle::GameHandle;
-use rust_mp::player_spawner;
-use rust_mp::player_spawner::GameHandleResource;
-
+use std::sync::{Arc,Mutex};
 
 #[macroquad::main("Platformer")]
 async fn main() {
@@ -54,21 +51,36 @@ async fn main() {
         });
     }
 
-    let mut world = World::new();
-    world.add_static_tiled_layer(static_colliders, 8., 8., 40, 1);
+    let mut world = Arc::new(Mutex::new(World::new()));
+    world.lock().unwrap().add_static_tiled_layer(static_colliders, 8., 8., 40, 1);
 
     let mut player = Player {
-        collider: world.add_actor(vec2(15.0, 15.0), 16, 16,),
+        collider: world.lock().unwrap().add_actor(vec2(15.0, 15.0), 16, 16,),
         speed: vec2(0., 0.),
-        state: PlayerState::Idle,
-        owner_id: 0,
-        object_id:-1,
+        wrapper: DataWrapper{state: PlayerState::Idle, owner_id: 0, object_id:-1,},
     };
 
-    let mut platform = Platform {
+
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() != 3 {
+        eprintln!("Usage: game_main <is_server> <ip:port>");
+        std::process::exit(1);
+    }
+
+    let is_server = args[1].parse::<bool>().unwrap_or(false);
+    let ip_string = args[2].clone();
+    
+    let game_handle = if is_server {
+        GameHandle::construct_server(world)
+    } else {
+        GameHandle::construct_client(ip_string,world)
+    };
+
+
+    /*let mut platform = Platform {
         collider: world.add_solid(vec2(170.0, 130.0), 32, 8),
         speed: 50.,
-    };
+    };*/
 
     let camera = Camera2D::from_display_rect(Rect::new(0.0, 152.0, 320.0, -152.0));
 
@@ -80,38 +92,38 @@ async fn main() {
         tiled_map.draw_tiles("main layer", Rect::new(0.0, 0.0, 320.0, 152.0), None);
 
         // draw platform
-        {
+        /*{
             let pos = world.solid_pos(platform.collider);
             tiled_map.spr_ex(
                 "tileset",
                 Rect::new(6.0 * 8.0, 0.0, 32.0, 8.0),
                 Rect::new(pos.x, pos.y, 32.0, 8.0),
             )
-        }
-
-            player.move_player(&mut world, &mut current_frame, &mut frame_timer);
+        }*/
+        
+        player.move_player(&mut world.lock().unwrap(), &mut current_frame, &mut frame_timer);
         
         {
-            let pos = world.actor_pos(player.collider);
-            let on_ground = world.collide_check(player.collider, pos + vec2(0., 1.));
+            let pos = world.lock().unwrap().actor_pos(player.collider);
+            let on_ground = world.lock().unwrap().collide_check(player.collider, pos + vec2(0., 1.));
             let moving = player.speed.x.abs() > 0.0;
             
             // Меняем состояние только если игрок НЕ в состоянии атаки
             // Это важно, чтобы анимация атаки проигрывалась полностью
-            if player.state != PlayerState::Attack1 && player.state != PlayerState::Attack2 {
+            if player.wrapper.state != PlayerState::Attack1 && player.wrapper.state != PlayerState::Attack2 {
                 if !on_ground {
-                    player.state = PlayerState::Jumping;
+                    player.wrapper.state = PlayerState::Jumping;
                 } else if moving {
-                    player.state = PlayerState::Running;
+                    player.wrapper.state = PlayerState::Running;
                 } else {
-                    player.state = PlayerState::Idle;
+                    player.wrapper.state = PlayerState::Idle;
                 }
             }
 
             frame_timer += get_frame_time();
             if frame_timer >= frame_duration {
                 frame_timer = 0.0;
-                match player.state {
+                match player.wrapper.state {
                     PlayerState::Running => current_frame = (current_frame + 1) % total_frames,
                     PlayerState::Idle => current_frame = (current_frame + 1) % total_idle_frames,
                     PlayerState::Jumping => current_frame = (current_frame + 1) % total_jump_frames,
@@ -121,11 +133,11 @@ async fn main() {
                         if current_frame == 0 {
                           
                             if !on_ground {
-                                player.state = PlayerState::Jumping;
+                                player.wrapper.state = PlayerState::Jumping;
                             } else if moving {
-                                player.state = PlayerState::Running;
+                                player.wrapper.state = PlayerState::Running;
                             } else {
-                                player.state = PlayerState::Idle;
+                                player.wrapper.state = PlayerState::Idle;
                             }
                         }
                     },
@@ -134,11 +146,11 @@ async fn main() {
                         
                         if current_frame == 0 {
                             if !on_ground {
-                                player.state = PlayerState::Jumping;
+                                player.wrapper.state = PlayerState::Jumping;
                             } else if moving {
-                                player.state = PlayerState::Running;
+                                player.wrapper.state = PlayerState::Running;
                             } else {
-                                player.state = PlayerState::Idle;
+                                player.wrapper.state = PlayerState::Idle;
                             }
                         }
                     },
@@ -150,7 +162,7 @@ async fn main() {
             let player_height = 100.0; 
             
            
-            let (texture_to_use, frame_width) = match player.state {
+            let (texture_to_use, frame_width) = match player.wrapper.state {
                 PlayerState::Running => (&run_texture, 1042.0),
                 PlayerState::Idle => (&idle_texture, 1042.0),
                 PlayerState::Jumping => (&jump_texture, 1042.0), 
@@ -192,42 +204,18 @@ async fn main() {
            // draw_rectangle_lines(pos.x, pos.y, 16.0, 16.0, 2.0, RED);
             
             // Для отладки: отображение текущего состояния и кадра
-           // draw_text(&format!("State: {:?}, Frame: {}", player.state, current_frame), 
+           // draw_text(&format!("State: {:?}, Frame: {}", player.wrapper.state, current_frame), 
              //   10.0, 20.0, 20.0, YELLOW);
         }
 
 
 
 
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() != 3 {
-        eprintln!("Usage: game_main <is_server> <ip:port>");
-        std::process::exit(1);
-    }
-
-    let is_server = args[1].parse::<bool>().unwrap_or(false);
-    let ip_string = args[2].clone();
     
-    let game_handle = if is_server {
-        GameHandle::construct_server()
-    } else {
-        GameHandle::construct_client(ip_string)
-    };
 
     
 
 
-fn move_player_system(
-    keyboard_input: Res<ButtonInput<KeyCode>>,  
-    time: Res<Time>,                       
-    mut query: Query<(&Player, &mut Transform)>,
-) {
 
-    for (player, mut transform) in query.iter_mut() {
-        if player.get_owner() == 0 {
-            player.move_player(&keyboard_input, &time, &mut transform);
-        }
     }
-}
-}
 }
