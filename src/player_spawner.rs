@@ -1,4 +1,5 @@
-use bevy::prelude::*;
+use macroquad::prelude::*;
+use macroquad_platformer::*;
 use std::sync::{Arc,Mutex};
 use crate::game_handle::GameHandle;
 use crate::player::Player;
