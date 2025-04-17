@@ -1,6 +1,5 @@
 use serde::{Serialize,Deserialize};
 use macroquad::prelude::*;
-use macroquad_tiled as tiled;
 use macroquad_platformer::*;
 use crate::network_sync::NetworkSync;
 

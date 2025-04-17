@@ -51,7 +51,7 @@ async fn main() {
         });
     }
 
-    let mut world = Arc::new(Mutex::new(World::new()));
+    let world = Arc::new(Mutex::new(World::new()));
     world.lock().unwrap().add_static_tiled_layer(static_colliders, 8., 8., 40, 1);
 
     let mut player = Player {
@@ -70,10 +70,10 @@ async fn main() {
     let is_server = args[1].parse::<bool>().unwrap_or(false);
     let ip_string = args[2].clone();
     
-    let game_handle = if is_server {
-        GameHandle::construct_server(world)
+    let _game_handle = if is_server {
+        GameHandle::construct_server(Arc::clone(&world))
     } else {
-        GameHandle::construct_client(ip_string,world)
+        GameHandle::construct_client(ip_string,Arc::clone(&world))
     };
 
 
@@ -207,15 +207,7 @@ async fn main() {
            // draw_text(&format!("State: {:?}, Frame: {}", player.wrapper.state, current_frame), 
              //   10.0, 20.0, 20.0, YELLOW);
         }
-
-
-
-
-    
-
-    
-
-
-
+        
+        next_frame().await;
     }
 }
