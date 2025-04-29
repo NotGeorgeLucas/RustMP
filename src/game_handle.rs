@@ -17,6 +17,7 @@ pub struct GameHandle {
     client: Option<Arc<Mutex<Client>>>,
     server: Option<Arc<Mutex<Server>>>,
     player_wrapper_map: Arc<Mutex<HashMap<i32, Player>>>,
+    personal_id: i32,
 }
 
 impl GameHandle {
@@ -27,11 +28,12 @@ impl GameHandle {
     
             let object_id = server_lock.gen_new_player_id();
             player.set_object_id(object_id);
+            player.set_owner(self.personal_id);
             
             let mut player_wrapper_map = self.player_wrapper_map.lock().unwrap();
             player_wrapper_map.insert(object_id, player);
 
-            server_lock.add_player(player,-1);
+            server_lock.add_player(player,self.personal_id);
 
             return Some(player.get_object_id());
 
@@ -57,6 +59,9 @@ impl GameHandle {
                 drop(client_lock);
                 if new_player_id.is_some(){
                     player.set_object_id(new_player_id.unwrap());
+
+                    player.set_owner(self.personal_id);
+
                     let mut player_wrapper_map = self.player_wrapper_map.lock().unwrap();
                     player_wrapper_map.insert(new_player_id.unwrap(), player);
                     return Some(player.get_object_id());
@@ -129,6 +134,11 @@ impl GameHandle {
     }
 
 
+    pub fn get_personal_id(&self) -> i32{
+        self.personal_id
+    }
+
+
     fn launch_server(&mut self, world: Arc<Mutex<World>>) -> Result<(), std::io::Error> {
         let server = Arc::new(Mutex::new(Server::new(world, Arc::clone(&self.player_wrapper_map))?));
         server.lock().unwrap().start(Arc::clone(&server));
@@ -140,6 +150,7 @@ impl GameHandle {
 
         Ok(())
     }
+
 
     fn launch_client(&mut self, server_ip: String, world: Arc<Mutex<World>>) -> Result<(), String> {
         if server_ip.is_empty() {
@@ -160,14 +171,16 @@ impl GameHandle {
                                 
             }
             thread::sleep(Duration::from_millis(200));
-            if client.lock().unwrap().personal_id!=0 {
+            let new_id = client.lock().unwrap().get_personal_id();
+            if new_id!=0 {
+                self.personal_id = new_id;
                 println!("{}", "\n═════════════════════════════".bold().bright_cyan());
                 println!("{}", "  Client is up and running!".bold().bright_green());
                 println!("{}", "═════════════════════════════".bold().bright_cyan());
                 break;
             }
         }
-        if client.lock().unwrap().personal_id == 0{
+        if client.lock().unwrap().get_personal_id() == 0{
             panic!("Could not connect to the server and receive an ID");
         }
         self.client = Some(client);
@@ -175,12 +188,13 @@ impl GameHandle {
         Ok(())
     }
 
-
+    
     pub fn construct_client(server_ip: String, world: Arc<Mutex<World>>) -> Arc<Mutex<Self>> {
         let handle = GameHandle {
             client: None,
             server: None,
             player_wrapper_map: Arc::new(Mutex::new(HashMap::new())),
+            personal_id: 0,
         };
         let handle_mutex = Arc::new(Mutex::new(handle));
         handle_mutex.lock().unwrap().launch_client(server_ip,world).expect("Failed to launch client");
@@ -193,6 +207,7 @@ impl GameHandle {
             client: None,
             server: None,
             player_wrapper_map: Arc::new(Mutex::new(HashMap::new())),
+            personal_id: 0,
         };
         let handle_mutex = Arc::new(Mutex::new(handle));
         handle_mutex.lock().unwrap().launch_server(Arc::clone(&world)).expect("Failed to launch server");

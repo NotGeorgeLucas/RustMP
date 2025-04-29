@@ -1,3 +1,4 @@
+use crate::network_sync::NetworkSync;
 use crate::{CLIENT_PORT, SERVER_PORT};
 use crate::message::{Message,ObjectType};
 use crate::player::{DataWrapper, Player};
@@ -121,10 +122,11 @@ impl Server {
                                 match player_obj {
                                     ObjectType::Player(pl) => {
                                         let mut world = self.world.lock().unwrap();
-                                        let pl = Player::construct_from_wrapper(*pl, &mut world);
+                                        let mut pl = Player::construct_from_wrapper(*pl, &mut world);
                                         drop(world);
                                         let new_id: i32;
                                         if let Some(client_id) = self.socket_to_id(client_address){
+                                            pl.set_owner(client_id);
                                             new_id = self.add_player(pl, client_id);
                                             let mut wrapper_map = self.player_map_mutex.lock().unwrap();
                                             wrapper_map.insert(new_id, pl);

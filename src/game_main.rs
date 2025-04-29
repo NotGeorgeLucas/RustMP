@@ -67,7 +67,7 @@ async fn main() {
         let player = Player {
             collider: world.lock().unwrap().add_actor(vec2(15.0, 15.0), 16, 16,),
             speed: vec2(0., 0.),
-            wrapper: DataWrapper{state: PlayerState::Idle, owner_id: 0, object_id:-1,},
+            wrapper: DataWrapper{state: PlayerState::Idle, owner_id: 0, object_id:-1},
         };
         game_handle.lock().unwrap().add_player(player);
     }
@@ -80,11 +80,7 @@ async fn main() {
         attack1: &attack1_texture,
         attack2: &attack2_texture,
         world: &world,
-    };
-
-    
-    
-    
+    };    
 
 
 
@@ -101,7 +97,7 @@ async fn main() {
         let wrapper_map_mutex = game_handle_lock.get_player_wrapper_map();
         let mut wrapper_map = wrapper_map_mutex.lock().unwrap();
         for (_, player) in wrapper_map.iter_mut(){
-            player.handle(&mut world.lock().unwrap(), &mut current_frame, &mut frame_timer);
+            player.handle(&mut world.lock().unwrap(), &mut current_frame, &mut frame_timer, game_handle_lock.get_personal_id());
             player.render(current_frame, &player_textures, vec2(100.0, 100.0), 1042.0);
         }
         drop(game_handle_lock);

@@ -4,9 +4,6 @@ use macroquad_platformer::*;
 use std::sync::{Arc,Mutex};
 use crate::network_sync::NetworkSync;
 
-
-
-
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum PlayerState {
     Idle,
@@ -17,29 +14,29 @@ pub enum PlayerState {
     //Death
     //Take_hit
 }
+
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub enum  CharacterType {
+pub enum CharacterType {
     Withest,
     //With,
-   // Withest2,
+    //Withest2,
     //Mag
-    
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Copy)]
-pub struct DataWrapper{
+pub struct DataWrapper {
     pub state: PlayerState,
     pub owner_id: i32,
     pub object_id: i32,
     //character_type: CharacterType,
 }
+
 #[derive(Debug, Clone, Copy)]
 pub struct Player {
     pub collider: Actor,
     pub speed: Vec2,
     pub wrapper: DataWrapper,
 }
-
 
 pub struct PlayerTextures<'a> {
     pub run: &'a Texture2D,
@@ -50,17 +47,11 @@ pub struct PlayerTextures<'a> {
     pub world: &'a Arc<Mutex<World>>,
 }
 
-
-
-
 impl Player {
-    pub fn move_player(&mut self, world: &mut World, current_frame: &mut usize, frame_timer: &mut f32) {
+    
+    pub fn process_input(&mut self, world: &mut World, current_frame: &mut usize, frame_timer: &mut f32) {
         let pos = world.actor_pos(self.collider);
         let on_ground = world.collide_check(self.collider, pos + vec2(0., 1.));
-
-        if !on_ground {
-            self.speed.y += 500. * get_frame_time();
-        }
 
         if self.wrapper.state != PlayerState::Attack1 && self.wrapper.state != PlayerState::Attack2 {
             if is_key_down(KeyCode::D) {
@@ -68,14 +59,15 @@ impl Player {
             } else if is_key_down(KeyCode::A) {
                 self.speed.x = -100.0;
             } else {
-                self.speed.x = 0.;
+                self.speed.x = 0.0;
             }
         } else {
             self.speed.x = 0.0;
         }
 
+
         if is_key_pressed(KeyCode::Space) && on_ground && self.wrapper.state != PlayerState::Attack1 {
-            self.speed.y = -120.;
+            self.speed.y = -120.0;
         }
 
         if is_key_pressed(KeyCode::F) && on_ground && self.wrapper.state != PlayerState::Attack1 {
@@ -89,13 +81,33 @@ impl Player {
             *current_frame = 0;
             *frame_timer = 0.0;
         }
-
-        world.move_h(self.collider, self.speed.x * get_frame_time());
-        world.move_v(self.collider, self.speed.y * get_frame_time());
     }
 
-    pub fn handle(&mut self, world: &mut World, current_frame: &mut usize, frame_timer: &mut f32) {
-        self.move_player(world, current_frame, frame_timer);
+
+    pub fn apply_physics(&mut self, world: &mut World) {
+        let dt = get_frame_time();
+        let pos = world.actor_pos(self.collider);
+        let on_ground = world.collide_check(self.collider, pos + vec2(0., 1.));
+
+        if !on_ground {
+            self.speed.y += 500.0 * dt;
+        }
+
+        world.move_h(self.collider, self.speed.x * dt);
+        world.move_v(self.collider, self.speed.y * dt);
+    }
+
+
+    pub fn move_player(&mut self, world: &mut World, current_frame: &mut usize, frame_timer: &mut f32, client_id: i32) {
+        if client_id == self.get_owner() {
+            self.process_input(world, current_frame, frame_timer);
+        }
+        self.apply_physics(world);
+    }
+
+
+    pub fn handle(&mut self, world: &mut World, current_frame: &mut usize, frame_timer: &mut f32, client_id: i32) {
+        self.move_player(world, current_frame, frame_timer, client_id);
 
         let pos = world.actor_pos(self.collider);
         let on_ground = world.collide_check(self.collider, pos + vec2(0., 1.));
@@ -181,19 +193,17 @@ impl Player {
         );
     }
 
-
-    pub fn construct_from_wrapper(wrapper: DataWrapper, world: &mut World) -> Player{
+    pub fn construct_from_wrapper(wrapper: DataWrapper, world: &mut World) -> Player {
         Player {
-            collider: world.add_actor(vec2(15.0, 15.0), 16, 16,),
-            speed: vec2(0., 0.),
-            wrapper: wrapper
+            collider: world.add_actor(vec2(15.0, 15.0), 16, 16),
+            speed: vec2(0.0, 0.0),
+            wrapper,
         }
     }
 }
 
-
-impl NetworkSync for Player{
-    fn get_owner(&self) -> i32{
+impl NetworkSync for Player {
+    fn get_owner(&self) -> i32 {
         self.wrapper.owner_id
     }
 

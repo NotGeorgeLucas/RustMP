@@ -16,7 +16,7 @@ use macroquad_platformer::World;
 pub struct Client {
     server_address: SocketAddr,
     socket: Arc<Mutex<UdpSocket>>,
-    pub personal_id:i32,
+    personal_id:i32,
     synced_players: Arc<Mutex<HashMap<i32, DataWrapper>>>,
     world: Arc<Mutex<World>>,
     tx: Option<Sender<HashMap<String, ObjectType>>>,
@@ -49,6 +49,11 @@ impl Client{
 
     pub fn get_world(&self) -> Arc<Mutex<World>> {
         Arc::clone(&self.world)
+    }
+
+
+    pub fn get_personal_id(&self) -> i32 {
+        self.personal_id
     }
     
 
