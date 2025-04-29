@@ -1,6 +1,5 @@
 use crate::message::{Message,ObjectType};
-//use crate::game_handle::GameHandle;
-use crate::player::Player;
+use crate::player::{DataWrapper,Player};
 use crate::CLIENT_PORT;
 use std::collections::HashMap;
 use std::net::{UdpSocket, SocketAddr};
@@ -18,16 +17,17 @@ pub struct Client {
     server_address: SocketAddr,
     socket: Arc<Mutex<UdpSocket>>,
     pub personal_id:i32,
-    synced_players: HashMap<i32, Player>,
+    synced_players: Arc<Mutex<HashMap<i32, DataWrapper>>>,
     world: Arc<Mutex<World>>,
-    //game_handle: Arc<Mutex<GameHandle>>,
     tx: Option<Sender<HashMap<String, ObjectType>>>,
+    new_player_id: Option<i32>,
+    player_map_mutex: Arc<Mutex<HashMap<i32,Player>>>,
 }
 
 
 
 impl Client{
-    pub fn new(server_address_ip: String, /*game_handle_mutex: Arc<Mutex<GameHandle>>*/ world: Arc<Mutex<World>>) -> Result<Client> {
+    pub fn new(server_address_ip: String, world: Arc<Mutex<World>>, players:Arc<Mutex<HashMap<i32, Player>>>) -> Result<Client> {
         let mut server_address = server_address_ip.clone();
         server_address = server_address;
         let socket = UdpSocket::bind(format!("0.0.0.0:{}",CLIENT_PORT))?;
@@ -38,10 +38,11 @@ impl Client{
             server_address:SocketAddr::from_str(&server_address).unwrap(),
             socket:Arc::new(Mutex::new(socket)),
             personal_id:0,
-            synced_players: HashMap::new(),
+            synced_players: Arc::new(Mutex::new(HashMap::new())),
             world: world,
-            //game_handle: game_handle_mutex,
-            tx: None
+            tx: None,
+            new_player_id: None,
+            player_map_mutex: players,
         })
     }
 
@@ -70,14 +71,16 @@ impl Client{
                         },
                         "ret_sync_players" => {
                             if let Some(ObjectType::PlayerMap(players)) = received_map.get("players"){
-                                let mut locked_world = self.world.lock().unwrap();
-                                let player_map = players
-                                    .iter()
-                                    .map(|(key, pl)| (key.clone(), Player::construct_from_wrapper(*pl, &mut locked_world)))
-                                    .collect();
-                                self.synced_players = player_map;
+                                self.synced_players = Arc::new(Mutex::new(players.clone()));
                             }else{
                                 eprintln!("Invalid player map return type");
+                            }
+                        },
+                        "ret_player_obj_id" => {
+                            if let Some(ObjectType::Integer(new_player_id)) = received_map.get("id"){
+                                self.new_player_id = Some(*new_player_id);
+                            }else{
+                                eprintln!("Invalid player id return type");
                             }
                         },
                         _ =>{
@@ -157,8 +160,13 @@ impl Client{
     }
 
     
-    pub fn get_synced_players(&self) -> HashMap<i32, Player> { 
-        self.synced_players.clone()
+    pub fn get_synced_players(&self) -> Arc<Mutex<HashMap<i32, DataWrapper>>> {
+        Arc::clone(&self.synced_players)
+    }
+
+
+    pub fn get_new_player_id(&self) -> Option<i32> {
+        self.new_player_id
     }
 
 

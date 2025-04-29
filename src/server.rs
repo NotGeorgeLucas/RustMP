@@ -1,5 +1,3 @@
-//use crate::game_handle::GameHandle;
-use crate::network_sync::NetworkSync;
 use crate::{CLIENT_PORT, SERVER_PORT};
 use crate::message::{Message,ObjectType};
 use crate::player::{DataWrapper, Player};
@@ -17,16 +15,16 @@ use macroquad_platformer::World;
 pub struct Server {
     socket: Arc<Mutex<UdpSocket>>,
     user_map: HashMap<i32,SocketAddr>,
-    synced_players: HashMap<i32, Player>, //    🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+    synced_players: Arc<Mutex<HashMap<i32, DataWrapper>>>, //    🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
     world: Arc<Mutex<World>>,
-    //game_handle: Arc<Mutex<GameHandle>>,
+    player_map_mutex: Arc<Mutex<HashMap<i32,Player>>>,
 }
 
 
 
 
 impl Server {
-    pub fn new(/*game_handle_mutex: Arc<Mutex<GameHandle>>*/ world:Arc<Mutex<World>>) -> Result<Server> {
+    pub fn new(world:Arc<Mutex<World>>, players: Arc<Mutex<HashMap<i32,Player>>>) -> Result<Server> {
         let server_address = format!("0.0.0.0:{}",SERVER_PORT);
         let socket = UdpSocket::bind(server_address.clone()).unwrap();
         socket.set_nonblocking(true)?;
@@ -34,9 +32,9 @@ impl Server {
         Ok(Server {
             socket: Arc::new(Mutex::new(socket)),
             user_map: HashMap::new(),
-            synced_players: HashMap::new(),
-            world: world
-            //game_handle: game_handle_mutex,
+            synced_players: Arc::new(Mutex::new(HashMap::new())),
+            world: world,
+            player_map_mutex: players,
         })
     }
 
@@ -53,14 +51,16 @@ impl Server {
 
     pub fn gen_new_player_id(&self) -> i32{
         let mut key:i32 = 1;
+        let synced_players = self.synced_players.lock().unwrap();
         loop {
-            if !self.synced_players.contains_key(&key){
+            if !synced_players.contains_key(&key){
                 break;
             }
             key+=1;
         }
         key
     }
+
 
     pub fn id_to_socket(&self, id: i32) -> Option<SocketAddr> {
         if let Some(socket_addr) = self.user_map.get(&id) {
@@ -71,8 +71,29 @@ impl Server {
     }
 
 
+    pub fn socket_to_id(&self, socket: SocketAddr) -> Option<i32> {
+        self.user_map
+            .iter()
+            .find_map(|(id, addr)| if *addr == socket { Some(*id) } else { None })
+    }
+
+
     pub fn get_world(&self) -> Arc<Mutex<World>> {
         Arc::clone(&self.world)
+    }
+
+
+    pub fn get_synced_players(&self) -> Arc<Mutex<HashMap<i32, DataWrapper>>> {
+        Arc::clone(&self.synced_players)
+    }
+
+
+    pub fn add_player(&mut self, mut player: Player, owner_id: i32) -> i32{
+        let new_id = self.gen_new_player_id();
+        player.wrapper.owner_id = owner_id;
+
+        self.synced_players.lock().unwrap().insert(new_id, player.wrapper);
+        new_id        
     }
 
 
@@ -92,56 +113,32 @@ impl Server {
                             response_map.insert(String::from("id"), ObjectType::Integer(new_id));
                         },
                         "get_sync_players" => {
-                            if let Some(new_player) = received_map.get("player"){
-                                let new_id = self.gen_new_player_id();
-                                match new_player {
-                                    ObjectType::Player(np) => {
-                                        let mut players_clone = self.synced_players.clone();
-                                        for (_, player) in players_clone.iter_mut(){
-                                            player.set_owner(-1);
-                                        }
-                                        let mut locked_world = self.world.lock().unwrap();
-                                        self.synced_players.insert(new_id,Player::construct_from_wrapper(*np,&mut locked_world));
-                                        players_clone.insert(new_id, Player::construct_from_wrapper(*np,&mut locked_world));
-                                        response_map.insert(String::from("goal"), ObjectType::StringMsg(String::from("ret_sync_players")));
-                                        let wrapper_map: HashMap<i32, DataWrapper> = players_clone
-                                            .iter()
-                                            .map(|(key, pl)| (key.clone(), pl.wrapper)) 
-                                            .collect();
-                                        response_map.insert(String::from("players"), ObjectType::PlayerMap(wrapper_map));
-                                    },
-                                    _ => {
-                                        eprintln!("player field not a player struct");
-                                    }
-                                }
-                            }else{
-                                eprintln!("player field not found in get_sync_objects message");
-                            }
+                            response_map.insert("goal".into(), ObjectType::StringMsg("ret_sync_players".into()));
+                            response_map.insert("players".into(), ObjectType::PlayerMap(self.synced_players.lock().unwrap().clone()));
                         },
                         "add_player" => {
-                            let mut new_id: Option<i32> = None;
-                            let mut new_player: Option<Player> = None;
-                            if let Some(id) = received_map.get("id"){
-                                match id{
-                                    ObjectType::Integer(val) => {new_id = Some(*val);},
-                                    _ => {eprintln!("Object id not i32")},
-                                }
-                            }else{
-                                eprintln!("ID field not found in message");
-                            }
-                            if let Some(pl) = received_map.get("player"){
-                                match pl{
-                                    ObjectType::Player(pl_val) => {
-                                        let mut locked_world = self.world.lock().unwrap();
-                                        new_player = Some(Player::construct_from_wrapper(*pl_val,&mut locked_world));
+                            if let Some(player_obj) = received_map.get("player") {
+                                match player_obj {
+                                    ObjectType::Player(pl) => {
+                                        let mut world = self.world.lock().unwrap();
+                                        let pl = Player::construct_from_wrapper(*pl, &mut world);
+                                        drop(world);
+                                        let new_id: i32;
+                                        if let Some(client_id) = self.socket_to_id(client_address){
+                                            new_id = self.add_player(pl, client_id);
+                                            let mut wrapper_map = self.player_map_mutex.lock().unwrap();
+                                            wrapper_map.insert(new_id, pl);
+                                            response_map.insert("goal".into(), ObjectType::StringMsg("ret_player_obj_id".into()));
+                                            response_map.insert("id".into(), ObjectType::Integer(new_id));
+                                        }
+                                        
                                     },
-                                    _ => {eprintln!("Player not a valid player struct")},
+                                    _ => {
+                                        eprintln!("player field is invalid type");
+                                    }
                                 }
-                            }else{
-                                eprintln!("ID field not found in message");
-                            }
-                            if new_id.is_some() && new_player.is_some(){
-                                self.synced_players.insert(new_id.unwrap(), new_player.unwrap());
+                            } else {
+                                eprintln!("Missing 'player' field in received_map");
                             }
                         },
                         _ =>{
