@@ -2,7 +2,7 @@
 "witcher":{
 "Attack1":{
     "size_frame":{ 
-        "width":1041,
+        "width":1042,
         "height":1042
         
     }
@@ -10,14 +10,14 @@
 },
 "Attack2":{
     "size_frame":{ 
-        "width":1041,
+        "width":1042,
         "height":1042
         
     }
 },
 "Death":{
     "size_frame":{ 
-        "width":1041,
+        "width":1042,
         "height":1042
         
     }
@@ -25,7 +25,7 @@
 },
 "Jump":{
     "size_frame":{ 
-        "width":1041,
+        "width":1042,
         "height":1042
         
     }
@@ -33,7 +33,7 @@
 },
 "Idle":{
     "size_frame":{ 
-        "width":1041,
+        "width":1042,
         "height":1042
         
     }
@@ -41,14 +41,14 @@
 
 "Run":{
     "size_frame":{ 
-        "width":1041,
+        "width":1042,
         "height":1042
         
     }
 },
 "Fall":{
     "size_frame":{ 
-        "width":1041,
+        "width":1042,
         "height":1042
         
     }
@@ -56,7 +56,7 @@
 },
 "TakeHit":{
     "size_frame":{ 
-        "width":1041,
+        "width":1042,
         "height":1042
         
     }
@@ -67,36 +67,36 @@
 "witch": {
 "Attack1":{
     "size_frame":{ 
-        "width":147,
-        "height":398.78
+        "width":882,
+        "height":390
         
     }
 },
 "Attack2":{
     "size_frame":{ 
-        "width":147,
-        "height":398.78
+        "width":882,
+        "height":390
         
     }
 },
 "Death":{
     "size_frame":{ 
-        "width":1041,
-        "height":1042
+        "width":235,
+        "height":293
         
     }
 },
 "Charge":{
     "size_frame":{ 
-        "width":1041,
-        "height":1042
+        "width":689,
+        "height":688
         
     }
 },
 "Fall":{
     "size_frame":{ 
-        "width":1041,
-        "height":1042
+        "width":391,
+        "height":585
         
     }
 
@@ -118,15 +118,15 @@
 },
 "Idle":{
     "size_frame":{ 
-        "width":1041,
-        "height":1042
+        "width":391,
+        "height":585
         
     }
 },
 "Run":{
     "size_frame":{ 
-        "width":1041,
-        "height":1042
+        "width":293,
+        "height":439
         
     }
 },

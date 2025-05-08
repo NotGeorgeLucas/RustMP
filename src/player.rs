@@ -61,8 +61,8 @@ impl CharacterTextures {
                 run: load_texture("examples/W_blue/B_run.png").await.unwrap(),
                 idle: load_texture("examples/W_blue/B_idle.png").await.unwrap(),
                 jump: load_texture("examples/W_blue/B_idle.png").await.unwrap(),
-                attack1: load_texture("examples/W_blue/Attack.png").await.unwrap(),
-                attack2: load_texture("examples/W_blue/Attack.png").await.unwrap(),
+                attack1: load_texture("examples/W_blue/Attack1.png").await.unwrap(),
+                attack2: load_texture("examples/W_blue/Attack2.png").await.unwrap(),
             },
         }
     }
@@ -101,12 +101,16 @@ pub struct CharacterAnimations {
 }
 #[derive(Debug, Clone, Deserialize)]
 pub struct WitchAnimations {
-    pub Attack: AnimationData,
+    pub Attack1: AnimationData,
+    pub Attack2: AnimationData,
     pub Death: AnimationData,
     pub Charge: AnimationData,
     pub Damage: AnimationData,
     pub Idle: AnimationData,
     pub Run: AnimationData,
+    pub Jump: AnimationData,
+    pub Fall: AnimationData,
+    pub TakeHit: AnimationData,
 }
 
 #[derive(Deserialize)]
@@ -137,22 +141,22 @@ impl CharacterAnimationFrames {
         CharacterAnimationFrames {
             witcher: AnimationFrames {
                 run: 8,
-                idle: 6,
-                jumping: 4,
-                attack1: 10,
-                attack2: 12,
+                idle: 8,
+                jumping: 2,
+                attack1: 8,
+                attack2: 8,
                 death: 7,
-                take_hit: 5,
-                fall: 4,
+                take_hit: 3,
+                fall: 2,
             },
             witch: AnimationFrames {
-                run: 9,
-                idle: 7,
-                jumping: 5,
-                attack1: 8,
+                run: 8,
+                idle: 6,
+                jumping: 6,
+                attack1: 9,
                 attack2: 9,
-                death: 6,
-                take_hit: 4,
+                death: 12,
+                take_hit: 3,
                 fall: 5,
             },
         }
@@ -390,12 +394,23 @@ impl Player {
             _ => current_frame,
         };
 
-        let src_rect = Rect::new(
-            frame_to_draw as f32 * frame_width,
+       let src_rect = match character_type{
+        CharacterType::Withest => Rect::new(
+            (frame_width * frame_to_draw as f32) / 10.0,
             0.0,
-            frame_width,
-            frame_height,
-        );
+            frame_width / 10.0,
+            frame_height / 10.0,
+        ),
+        CharacterType::Witch => {
+            // Вертикальная анимация
+            Rect::new(
+                0.0,
+                (frame_size.height * frame_to_draw as f32) / 10.0,
+                frame_size.width / 10.0,
+                frame_size.height / 10.0,
+            )
+       },
+         };
         let dest_rect = Rect::new(
             pos.x - (player_size.x - 16.0) / 2.0,
             pos.y - player_size.y + 50.0,
