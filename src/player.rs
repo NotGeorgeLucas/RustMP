@@ -1,7 +1,6 @@
 use serde::{Serialize,Deserialize};
 use macroquad::prelude::*;
 use macroquad_platformer::*;
-use std::sync::{Arc,Mutex};
 use crate::network_sync::NetworkSync;
 use serde_json;
 
@@ -88,46 +87,54 @@ pub struct AnimationData {
     pub size_frame: FrameSize,
 }
 
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct CharacterAnimations {
-    pub Attack1: AnimationData,
-    pub Attack2: AnimationData,
-    pub Death: AnimationData,
-    pub Jump: AnimationData,
-    pub Idle: AnimationData,
-    pub Run: AnimationData,
-    pub Fall: AnimationData,
-    pub TakeHit: AnimationData,
+    pub attack1: AnimationData,
+    pub attack2: AnimationData,
+    pub death: AnimationData,
+    pub jump: AnimationData,
+    pub idle: AnimationData,
+    pub run: AnimationData,
+    pub fall: AnimationData,
+    pub hit_taken: AnimationData,
 }
+
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct WitchAnimations {
-    pub Attack1: AnimationData,
-    pub Attack2: AnimationData,
-    pub Death: AnimationData,
-    pub Charge: AnimationData,
-    pub Damage: AnimationData,
-    pub Idle: AnimationData,
-    pub Run: AnimationData,
-    pub Jump: AnimationData,
-    pub Fall: AnimationData,
-    pub TakeHit: AnimationData,
+    pub attack1: AnimationData,
+    pub attack2: AnimationData,
+    pub death: AnimationData,
+    pub charge: AnimationData,
+    pub damage: AnimationData,
+    pub idle: AnimationData,
+    pub run: AnimationData,
+    pub jump: AnimationData,
+    pub fall: AnimationData,
+    pub hit_taken: AnimationData,
 }
+
 
 #[derive(Deserialize)]
 pub struct PlayerSizeData {
     pub witcher: CharacterAnimations,
     pub witch: CharacterAnimations,
 }
+
+
 pub struct AnimationFrames {
-  pub run: usize,
-  pub idle: usize,
-  pub jumping: usize,
+    pub run: usize,
+    pub idle: usize,
+    pub jumping: usize,
     pub attack1: usize,
     pub attack2: usize,
     pub death: usize,
     pub take_hit: usize,
     pub fall: usize,  
 }
+
+
 pub struct CharacterAnimationFrames {
     pub witcher: AnimationFrames, // Кадры для мага
     pub witch: AnimationFrames,   // Кадры для ведьмы
@@ -185,11 +192,11 @@ impl Player {
     ) -> Player {
         let (width, height) = match wrapper.character_type {
             CharacterType::Withest => {
-                let size = &player_size_data.witcher.Idle.size_frame;
+                let size = &player_size_data.witcher.idle.size_frame;
                 ((size.width / 10.0) as i32, (size.height / 10.0) as i32)
             }
             CharacterType::Witch => {
-                let size = &player_size_data.witch.Idle.size_frame;
+                let size = &player_size_data.witch.idle.size_frame;
                 ((size.width / 10.0) as i32, (size.height / 10.0) as i32)
             }
         };
@@ -272,7 +279,7 @@ impl Player {
     
 
 
-    pub fn handle(&mut self, world: &mut World, current_frame: &mut usize, frame_timer: &mut f32, client_id: i32, player_size_data: &PlayerSizeData, character_type: CharacterType, animation_frames: &CharacterAnimationFrames) {
+    pub fn handle(&mut self, world: &mut World, current_frame: &mut usize, frame_timer: &mut f32, client_id: i32, character_type: CharacterType, animation_frames: &CharacterAnimationFrames) {
         self.move_player(world, current_frame, frame_timer, client_id);
         let pos = world.actor_pos(self.collider);
         let on_ground = world.collide_check(self.collider, pos + vec2(0., 1.));
@@ -350,7 +357,7 @@ impl Player {
         }
     }
 
-    pub fn render(&self, current_frame: usize, textures: &CharacterTextures, player_size: Vec2, frame_width: f32, character_type: CharacterType, world: &World, player_size_data: &PlayerSizeData) {
+    pub fn render(&self, current_frame: usize, textures: &CharacterTextures, player_size: Vec2, character_type: CharacterType, world: &World, player_size_data: &PlayerSizeData) {
         let pos = world.actor_pos(self.collider);
 
         let texture = match character_type {
@@ -372,18 +379,18 @@ impl Player {
 
         let frame_size = match character_type {
             CharacterType::Withest => match self.wrapper.state {
-                PlayerState::Running => &player_size_data.witcher.Run.size_frame,
-                PlayerState::Idle => &player_size_data.witcher.Idle.size_frame,
-                PlayerState::Jumping => &player_size_data.witcher.Jump.size_frame,
-                PlayerState::Attack1 => &player_size_data.witcher.Attack1.size_frame,
-                PlayerState::Attack2 => &player_size_data.witcher.Attack2.size_frame,
+                PlayerState::Running => &player_size_data.witcher.run.size_frame,
+                PlayerState::Idle => &player_size_data.witcher.idle.size_frame,
+                PlayerState::Jumping => &player_size_data.witcher.jump.size_frame,
+                PlayerState::Attack1 => &player_size_data.witcher.attack1.size_frame,
+                PlayerState::Attack2 => &player_size_data.witcher.attack2.size_frame,
             },
             CharacterType::Witch => match self.wrapper.state {
-                PlayerState::Running => &player_size_data.witch.Run.size_frame,
-                PlayerState::Idle => &player_size_data.witch.Idle.size_frame,
-                PlayerState::Jumping => &player_size_data.witch.Jump.size_frame,
-                PlayerState::Attack1 => &player_size_data.witch.Attack1.size_frame,
-                PlayerState::Attack2 => &player_size_data.witch.Attack2.size_frame,
+                PlayerState::Running => &player_size_data.witch.run.size_frame,
+                PlayerState::Idle => &player_size_data.witch.idle.size_frame,
+                PlayerState::Jumping => &player_size_data.witch.jump.size_frame,
+                PlayerState::Attack1 => &player_size_data.witch.attack1.size_frame,
+                PlayerState::Attack2 => &player_size_data.witch.attack2.size_frame,
             },
         };
         let frame_width = frame_size.width;

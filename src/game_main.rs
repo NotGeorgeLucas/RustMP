@@ -87,15 +87,14 @@ async fn main() {
                 &mut current_frame,
                 &mut frame_timer,
                 game_handle_lock.get_personal_id(),
-                &player_size_data,
                 player.wrapper.character_type,
                 &animation_frames,
             );
 
             let character_type = player.wrapper.character_type;
             let frame_size = match character_type {
-                CharacterType::Withest => player_size_data.witcher.Idle.size_frame.clone(),
-                CharacterType::Witch => player_size_data.witch.Idle.size_frame.clone(),
+                CharacterType::Withest => player_size_data.witcher.idle.size_frame.clone(),
+                CharacterType::Witch => player_size_data.witch.idle.size_frame.clone(),
             };
 
             let player_size = vec2(frame_size.width / 10.0, frame_size.height / 10.0);
@@ -104,7 +103,6 @@ async fn main() {
                 current_frame,
                 &character_textures,
                 player_size,
-                frame_size.width,
                 character_type,
                 &world.lock().unwrap(),
                 &player_size_data,
