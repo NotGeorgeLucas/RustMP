@@ -1,22 +1,22 @@
 use macroquad::prelude::*;
 use macroquad_tiled as tiled;
 use macroquad_platformer::*;
-use rust_mp::player::*;
+use rust_mp::{player::*, PLAYER_SIZE_DATA};
 use rust_mp::game_handle::GameHandle;
 use std::sync::{Arc,Mutex};
 
 
 #[macroquad::main("Platformer")]
 async fn main() {
-    let tileset = load_texture("examples/tileset.png").await.unwrap();
+    let tileset = load_texture("assets/tileset.png").await.unwrap();
     tileset.set_filter(FilterMode::Nearest);
 
     let character_textures = CharacterTextures::load().await;
-    let player_size_data = load_player_size_data();
+    let player_size_data = &*PLAYER_SIZE_DATA;
     let animation_frames = CharacterAnimationFrames::new();
    
 
-    let tiled_map_json = load_string("examples/map.json").await.unwrap();
+    let tiled_map_json = load_string("assets/map.json").await.unwrap();
     let tiled_map = tiled::load_map(&tiled_map_json, &[("tileset.png", tileset)], &[]).unwrap();
     let mut static_colliders = vec![];
     for (_x, _y, tile) in tiled_map.tiles("main layer", None) {
@@ -49,12 +49,13 @@ async fn main() {
 
 
     {
-        let player = Player::construct_with_size(
+        let player = Player::construct_from_wrapper(
             DataWrapper {
                 state: PlayerState::Idle,
                 owner_id: 0,
                 object_id: -1,
-                character_type: CharacterType::Witch,
+                character_type: CharacterType::Witcher,
+                position_data: (15.0, 15.0),
             },
             &mut world.lock().unwrap(),
             &player_size_data,
@@ -93,8 +94,8 @@ async fn main() {
 
             let character_type = player.wrapper.character_type;
             let frame_size = match character_type {
-                CharacterType::Withest => player_size_data.witcher.idle.size_frame.clone(),
-                CharacterType::Witch => player_size_data.witch.idle.size_frame.clone(),
+                CharacterType::Witcher => &player_size_data.witcher.idle.size_frame,
+                CharacterType::Witch => &player_size_data.witch.idle.size_frame,
             };
 
             let player_size = vec2(frame_size.width / 10.0, frame_size.height / 10.0);

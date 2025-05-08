@@ -1,5 +1,5 @@
 use crate::network_sync::NetworkSync;
-use crate::{CLIENT_PORT, SERVER_PORT};
+use crate::{CLIENT_PORT, PLAYER_SIZE_DATA, SERVER_PORT};
 use crate::message::{Message,ObjectType};
 use crate::player::{DataWrapper, Player};
 use std::collections::HashMap;
@@ -122,7 +122,7 @@ impl Server {
                                 match player_obj {
                                     ObjectType::Player(pl) => {
                                         let mut world = self.world.lock().unwrap();
-                                        let mut pl = Player::construct_from_wrapper(*pl, &mut world);
+                                        let mut pl = Player::construct_from_wrapper(*pl, &mut world, &*PLAYER_SIZE_DATA);
                                         drop(world);
                                         let new_id: i32;
                                         if let Some(client_id) = self.socket_to_id(client_address){

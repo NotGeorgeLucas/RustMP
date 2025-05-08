@@ -18,16 +18,17 @@ pub enum PlayerState {
 
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum CharacterType {
-    Withest,
+    Witcher,
     Witch,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize,Copy)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 pub struct DataWrapper {
     pub state: PlayerState,
     pub owner_id: i32,
     pub object_id: i32,
     pub character_type: CharacterType,
+    pub position_data: (f32, f32),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -39,29 +40,27 @@ pub struct Player {
 }
 
 pub struct CharacterTextures {
-    pub withest: PlayerTextures,
+    pub witcher: PlayerTextures,
     pub witch: PlayerTextures, 
- 
-  
 }
 
 
 impl CharacterTextures {
     pub async fn load() -> Self {
         CharacterTextures {
-            withest: PlayerTextures {
-                run: load_texture("examples/Run.png").await.unwrap(),
-                idle: load_texture("examples/Idle.png").await.unwrap(),
-                jump: load_texture("examples/Jump.png").await.unwrap(),
-                attack1: load_texture("examples/Attack1.png").await.unwrap(),
-                attack2: load_texture("examples/Attack2.png").await.unwrap(),
+            witcher: PlayerTextures {
+                run: load_texture("assets/Run.png").await.unwrap(),
+                idle: load_texture("assets/Idle.png").await.unwrap(),
+                jump: load_texture("assets/Jump.png").await.unwrap(),
+                attack1: load_texture("assets/Attack1.png").await.unwrap(),
+                attack2: load_texture("assets/Attack2.png").await.unwrap(),
             },
             witch: PlayerTextures { 
-                run: load_texture("examples/W_blue/B_run.png").await.unwrap(),
-                idle: load_texture("examples/W_blue/B_idle.png").await.unwrap(),
-                jump: load_texture("examples/W_blue/B_idle.png").await.unwrap(),
-                attack1: load_texture("examples/W_blue/Attack1.png").await.unwrap(),
-                attack2: load_texture("examples/W_blue/Attack2.png").await.unwrap(),
+                run: load_texture("assets/W_blue/B_run.png").await.unwrap(),
+                idle: load_texture("assets/W_blue/B_idle.png").await.unwrap(),
+                jump: load_texture("assets/W_blue/B_idle.png").await.unwrap(),
+                attack1: load_texture("assets/W_blue/Attack1.png").await.unwrap(),
+                attack2: load_texture("assets/W_blue/Attack2.png").await.unwrap(),
             },
         }
     }
@@ -76,7 +75,7 @@ pub struct PlayerTextures {
    
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct FrameSize {
     pub width: f32,
     pub height: f32,
@@ -141,8 +140,6 @@ pub struct CharacterAnimationFrames {
 }
 
 
-
-
 impl CharacterAnimationFrames {
     pub fn new() -> Self {
         CharacterAnimationFrames {
@@ -172,7 +169,7 @@ impl CharacterAnimationFrames {
 
 
 pub fn load_player_size_data() -> PlayerSizeData {
-    let json_str = std::fs::read_to_string("examples/player_size.json")
+    let json_str = std::fs::read_to_string("assets/player_size.json")
         .expect("Failed to read player_size.json");
     
     serde_json::from_str(&json_str)
@@ -184,14 +181,10 @@ pub fn load_player_size_data() -> PlayerSizeData {
 
 
 impl Player {
-
-    pub fn construct_with_size(
-        wrapper: DataWrapper,
-        world: &mut World,
-        player_size_data: &PlayerSizeData,
-    ) -> Player {
+    
+    pub fn construct_from_wrapper(wrapper: DataWrapper, world: &mut World, player_size_data: &PlayerSizeData) -> Player {
         let (width, height) = match wrapper.character_type {
-            CharacterType::Withest => {
+            CharacterType::Witcher => {
                 let size = &player_size_data.witcher.idle.size_frame;
                 ((size.width / 10.0) as i32, (size.height / 10.0) as i32)
             }
@@ -202,16 +195,7 @@ impl Player {
         };
 
         Player {
-            collider: world.add_actor(vec2(15.0, 15.0), width, height),
-            speed: vec2(0.0, 0.0),
-            wrapper,
-            attack_frame: 0,
-        }
-    }
-
-    pub fn construct_from_wrapper(wrapper: DataWrapper, world: &mut World) -> Player {
-        Player {
-            collider: world.add_actor(vec2(15.0, 15.0), 16, 16),
+            collider: world.add_actor(vec2(wrapper.position_data.0, wrapper.position_data.1), width, height),
             speed: vec2(0.0, 0.0),
             wrapper,
             attack_frame: 0,
@@ -302,7 +286,7 @@ impl Player {
 
 
             let frames = match character_type {
-                CharacterType::Withest => &animation_frames.witcher,
+                CharacterType::Witcher => &animation_frames.witcher,
                 CharacterType::Witch => &animation_frames.witch,
             };
 
@@ -361,12 +345,12 @@ impl Player {
         let pos = world.actor_pos(self.collider);
 
         let texture = match character_type {
-            CharacterType::Withest => match self.wrapper.state {
-                PlayerState::Running => &textures.withest.run,
-                PlayerState::Idle => &textures.withest.idle,
-                PlayerState::Jumping => &textures.withest.jump,
-                PlayerState::Attack1 => &textures.withest.attack1,
-                PlayerState::Attack2 => &textures.withest.attack2,
+            CharacterType::Witcher => match self.wrapper.state {
+                PlayerState::Running => &textures.witcher.run,
+                PlayerState::Idle => &textures.witcher.idle,
+                PlayerState::Jumping => &textures.witcher.jump,
+                PlayerState::Attack1 => &textures.witcher.attack1,
+                PlayerState::Attack2 => &textures.witcher.attack2,
             },
             CharacterType::Witch => match self.wrapper.state { 
                 PlayerState::Running => &textures.witch.run,
@@ -378,7 +362,7 @@ impl Player {
         };
 
         let frame_size = match character_type {
-            CharacterType::Withest => match self.wrapper.state {
+            CharacterType::Witcher => match self.wrapper.state {
                 PlayerState::Running => &player_size_data.witcher.run.size_frame,
                 PlayerState::Idle => &player_size_data.witcher.idle.size_frame,
                 PlayerState::Jumping => &player_size_data.witcher.jump.size_frame,
@@ -401,23 +385,20 @@ impl Player {
             _ => current_frame,
         };
 
-       let src_rect = match character_type{
-        CharacterType::Withest => Rect::new(
-            (frame_width * frame_to_draw as f32) / 10.0,
-            0.0,
-            frame_width / 10.0,
-            frame_height / 10.0,
-        ),
-        CharacterType::Witch => {
-            // Вертикальная анимация
-            Rect::new(
+        let src_rect = match character_type{
+            CharacterType::Witcher => Rect::new(
+                frame_width * frame_to_draw as f32,
                 0.0,
-                (frame_size.height * frame_to_draw as f32) / 10.0,
-                frame_size.width / 10.0,
-                frame_size.height / 10.0,
-            )
-       },
-         };
+                frame_width,
+                frame_height,
+            ),
+            CharacterType::Witch => Rect::new(
+                0.0,
+                frame_size.height * frame_to_draw as f32,
+                frame_size.width,
+                frame_size.height,
+            ),
+        };
         let dest_rect = Rect::new(
             pos.x - (player_size.x - 16.0) / 2.0,
             pos.y - player_size.y + 50.0,
@@ -439,6 +420,7 @@ impl Player {
                 ..Default::default()
             },
         );
+        draw_rectangle_lines(dest_rect.x, dest_rect.y, dest_rect.w, dest_rect.h, 2.0, RED);        
     }
 }
 

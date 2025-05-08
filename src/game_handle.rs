@@ -7,6 +7,7 @@ use crate::server::Server;
 use crate::player::{DataWrapper, Player};
 use crate::network_sync::NetworkSync;
 use crate::message::ObjectType;
+use crate::PLAYER_SIZE_DATA;
 use colored::*;
 use macroquad_platformer::World;
 
@@ -97,7 +98,7 @@ impl GameHandle {
                     let world = self.get_world();
                     let mut world = world.lock().unwrap();
                     for (_, wrapper) in player_map.iter(){
-                        let player = Player::construct_from_wrapper(*wrapper, &mut world);
+                        let player = Player::construct_from_wrapper(*wrapper, &mut world, &*PLAYER_SIZE_DATA);
                         let mut player_wrapper_map = self.player_wrapper_map.lock().unwrap();
                         player_wrapper_map.insert(player.get_object_id(), player);
                     }

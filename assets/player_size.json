@@ -1,0 +1,143 @@
+{
+    "witcher":{
+        "attack1":{
+            "size_frame":{ 
+                "width":1042,
+                "height":1042
+                
+            }
+            
+        },
+        "attack2":{
+            "size_frame":{ 
+                "width":1042,
+                "height":1042
+                
+            }
+        },
+        "death":{
+            "size_frame":{ 
+                "width":1042,
+                "height":1042
+                
+            }
+
+        },
+        "jump":{
+            "size_frame":{ 
+                "width":1042,
+                "height":1042
+                
+            }
+            
+        },
+        "idle":{
+            "size_frame":{ 
+                "width":1042,
+                "height":1042
+                
+            }
+        },
+
+        "run":{
+            "size_frame":{ 
+                "width":1042,
+                "height":1042
+                
+            }
+        },
+        "fall":{
+            "size_frame":{ 
+                "width":1042,
+                "height":1042
+                
+            }
+
+        },
+        "hit_taken":{
+            "size_frame":{ 
+                "width":1042,
+                "height":1042
+                
+            }
+        }
+    },
+
+
+    "witch": {
+        "attack1":{
+            "size_frame":{ 
+                "width":882,
+                "height":390
+                
+            }
+        },
+        "attack2":{
+            "size_frame":{ 
+                "width":882,
+                "height":390
+                
+            }
+        },
+        "death":{
+            "size_frame":{ 
+                "width":235,
+                "height":293
+                
+            }
+        },
+        "charge":{
+            "size_frame":{ 
+                "width":689,
+                "height":688
+                
+            }
+        },
+        "fall":{
+            "size_frame":{ 
+                "width":391,
+                "height":585
+                
+            }
+
+        },
+        "hit_taken":{
+            "size_frame":{ 
+                "width":1041,
+                "height":1042
+                
+            }
+        },
+
+        "damage":{
+            "size_frame":{ 
+                "width":1041,
+                "height":1042
+                
+            }
+        },
+        "idle":{
+            "size_frame":{ 
+                "width":391,
+                "height":585
+                
+            }
+        },
+        "run":{
+            "size_frame":{ 
+                "width":293,
+                "height":439
+                
+            }
+        },
+        "jump":{
+            "size_frame":{ 
+                "width":1041,
+                "height":1042
+                
+            }
+            
+        }
+    }
+}
+
