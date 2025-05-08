@@ -10,27 +10,11 @@ use std::sync::{Arc,Mutex};
 async fn main() {
     let tileset = load_texture("examples/tileset.png").await.unwrap();
     tileset.set_filter(FilterMode::Nearest);
-    let run_texture = load_texture("examples/Run.png").await.unwrap();
-    run_texture.set_filter(FilterMode::Nearest);
-    let idle_texture = load_texture("examples/Idle.png").await.unwrap();
-    idle_texture.set_filter(FilterMode::Nearest);
-    let jump_texture = load_texture("examples/Jump.png").await.unwrap();
-    jump_texture.set_filter(FilterMode::Nearest);
-    let attack1_texture = load_texture("examples/Attack1.png").await.unwrap();
-    attack1_texture.set_filter(FilterMode::Nearest);
-    let attack2_texture = load_texture("examples/Attack2.png").await.unwrap();
-    attack2_texture.set_filter(FilterMode::Nearest);
-    // let death_texture = load_texture("examples/Death.png").await.unwrap();
-    // death_texture.set_filter(FilterMode::Nearest);
-    // let take_hit_texture = load_texture("examples/Take_hit.png").await.unwrap();
-    // take_hit_texture.set_filter(FilterMode::Nearest);
-    const _FRAME_WIDTH: f32 = 512.0;
-    const _FRAME_HEIGHT: f32 = 512.0;
-    // let take_hit =3;
-    
-    // переменные, которые меняются каждый кадр
-    let mut current_frame = 0;
-    let mut frame_timer = 0.0;
+
+    let character_textures = CharacterTextures::load().await;
+    let player_size_data = load_player_size_data();
+    let animation_frames = CharacterAnimationFrames::new();
+   
 
     let tiled_map_json = load_string("examples/map.json").await.unwrap();
     let tiled_map = tiled::load_map(&tiled_map_json, &[("tileset.png", tileset)], &[]).unwrap();
@@ -59,32 +43,32 @@ async fn main() {
         GameHandle::construct_server(Arc::clone(&world))
     } else {
         GameHandle::construct_client(ip_string,Arc::clone(&world))
+       
     };
     
 
 
     {
-        let player = Player {
-            collider: world.lock().unwrap().add_actor(vec2(15.0, 15.0), 16, 16,),
-            speed: vec2(0., 0.),
-            wrapper: DataWrapper{state: PlayerState::Idle, owner_id: 0, object_id:-1},
-        };
+        let player = Player::construct_with_size(
+            DataWrapper {
+                state: PlayerState::Idle,
+                owner_id: 0,
+                object_id: -1,
+                character_type: CharacterType::Witch,
+            },
+            &mut world.lock().unwrap(),
+            &player_size_data,
+        );
         game_handle.lock().unwrap().add_player(player);
     }
+    let mut current_frame = 0;
+    let mut frame_timer = 0.0;
+    let camera = Camera2D::from_display_rect(Rect::new(0.0, 152.0, 320.0, -152.0));
+   
+
+
 
     
-    let player_textures = PlayerTextures {
-        run: &run_texture,
-        idle: &idle_texture,
-        jump: &jump_texture,
-        attack1: &attack1_texture,
-        attack2: &attack2_texture,
-        world: &world,
-    };    
-
-
-
-    let camera = Camera2D::from_display_rect(Rect::new(0.0, 152.0, 320.0, -152.0));
 
     loop {
         clear_background(BLACK);
@@ -96,12 +80,36 @@ async fn main() {
         let mut game_handle_lock = game_handle.lock().unwrap();
         let wrapper_map_mutex = game_handle_lock.get_player_wrapper_map();
         let mut wrapper_map = wrapper_map_mutex.lock().unwrap();
-        for (_, player) in wrapper_map.iter_mut(){
-            player.handle(&mut world.lock().unwrap(), &mut current_frame, &mut frame_timer, game_handle_lock.get_personal_id());
-            player.render(current_frame, &player_textures, vec2(100.0, 100.0), 1042.0);
+
+        for (_, player) in wrapper_map.iter_mut() {
+            player.handle(
+                &mut world.lock().unwrap(),
+                &mut current_frame,
+                &mut frame_timer,
+                game_handle_lock.get_personal_id(),
+                &player_size_data,
+                player.wrapper.character_type,
+                &animation_frames,
+            );
+
+            let character_type = player.wrapper.character_type;
+            let frame_size = match character_type {
+                CharacterType::Withest => player_size_data.witcher.Idle.size_frame.clone(),
+                CharacterType::Witch => player_size_data.witch.Idle.size_frame.clone(),
+            };
+
+            let player_size = vec2(frame_size.width / 10.0, frame_size.height / 10.0);
+
+            player.render(
+                current_frame,
+                &character_textures,
+                player_size,
+                frame_size.width,
+                character_type,
+                &world.lock().unwrap(),
+                &player_size_data,
+            );
         }
-        drop(game_handle_lock);
-        
 
         next_frame().await;
     }

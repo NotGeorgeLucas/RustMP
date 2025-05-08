@@ -1,0 +1,143 @@
+{
+"witcher":{
+"Attack1":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+     
+},
+"Attack2":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+},
+"Death":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+
+},
+"Jump":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+    
+},
+"Idle":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+},
+
+"Run":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+},
+"Fall":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+
+},
+"TakeHit":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+}
+},
+
+
+"witch": {
+"Attack1":{
+    "size_frame":{ 
+        "width":147,
+        "height":398.78
+        
+    }
+},
+"Attack2":{
+    "size_frame":{ 
+        "width":147,
+        "height":398.78
+        
+    }
+},
+"Death":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+},
+"Charge":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+},
+"Fall":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+
+},
+"TakeHit":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+},
+
+"Damage":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+},
+"Idle":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+},
+"Run":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+},
+"Jump":{
+    "size_frame":{ 
+        "width":1041,
+        "height":1042
+        
+    }
+    
+}
+}
+}
+
