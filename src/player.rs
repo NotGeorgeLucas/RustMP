@@ -186,7 +186,7 @@ impl Player {
         let (width, height) = match wrapper.character_type {
             CharacterType::Witcher => {
                 let size = &player_size_data.witcher.idle.size_frame;
-                ((size.width / 10.0) as i32, (size.height / 10.0) as i32)
+                ((size.width / 30.0) as i32, (size.height / 30.0) as i32)
             }
             CharacterType::Witch => {
                 let size = &player_size_data.witch.idle.size_frame;
@@ -342,7 +342,6 @@ impl Player {
     }
 
     pub fn render(&self, current_frame: usize, textures: &CharacterTextures, player_size: Vec2, character_type: CharacterType, world: &World, player_size_data: &PlayerSizeData) {
-        let pos = world.actor_pos(self.collider);
 
         let texture = match character_type {
             CharacterType::Witcher => match self.wrapper.state {
@@ -399,11 +398,22 @@ impl Player {
                 frame_size.height,
             ),
         };
+
+        let collider_pos = world.actor_pos(self.collider);
+        let mut collider_size = vec2(player_size.x, player_size.y);
+
+        let scale = match character_type{
+            CharacterType::Witcher => 1.0 / 3.0,
+            CharacterType::Witch => 1.0,
+        };
+
+        collider_size = collider_size * scale;
+
         let dest_rect = Rect::new(
-            pos.x - (player_size.x - 16.0) / 2.0,
-            pos.y - player_size.y + 50.0,
-            player_size.x,
-            player_size.y,
+            collider_pos.x,
+            collider_pos.y,
+            collider_size.x,
+            collider_size.y,
         );
 
        
@@ -420,7 +430,8 @@ impl Player {
                 ..Default::default()
             },
         );
-        draw_rectangle_lines(dest_rect.x, dest_rect.y, dest_rect.w, dest_rect.h, 2.0, RED);        
+        draw_rectangle_lines(dest_rect.x, dest_rect.y, dest_rect.w, dest_rect.h, 2.0, RED);    
+        draw_rectangle_lines(collider_pos.x, collider_pos.y, collider_size.x, collider_size.y, 2.0, BLUE);    
     }
 }
 

@@ -54,7 +54,7 @@ async fn main() {
                 state: PlayerState::Idle,
                 owner_id: 0,
                 object_id: -1,
-                character_type: CharacterType::Witcher,
+                character_type: CharacterType::Witch,
                 position_data: (15.0, 15.0),
             },
             &mut world.lock().unwrap(),
