@@ -37,6 +37,8 @@ pub struct Player {
     pub speed: Vec2,
     pub wrapper: DataWrapper,
     pub attack_frame: usize,
+    pub pos_updated: bool,
+    pub current_frame: usize,
 }
 
 pub struct CharacterTextures {
@@ -199,10 +201,12 @@ impl Player {
             speed: vec2(0.0, 0.0),
             wrapper,
             attack_frame: 0,
+            pos_updated: false,
+            current_frame: 0,
         }
     }
     
-    pub fn process_input(&mut self, world: &mut World, current_frame: &mut usize, frame_timer: &mut f32) {
+    pub fn process_input(&mut self, world: &mut World, frame_timer: &mut f32) {
         let pos = world.actor_pos(self.collider);
         let on_ground = world.collide_check(self.collider, pos + vec2(0., 1.));
 
@@ -225,14 +229,14 @@ impl Player {
 
         if is_key_pressed(KeyCode::F) && on_ground && self.wrapper.state != PlayerState::Attack1 {
             self.wrapper.state = PlayerState::Attack1;
-            *current_frame = 0;
+            self.current_frame = 0;
             *frame_timer = 0.0;
             self.attack_frame = 0;
         }
 
         if is_key_pressed(KeyCode::G) && on_ground && self.wrapper.state != PlayerState::Attack2 {
             self.wrapper.state = PlayerState::Attack2;
-            *current_frame = 0;
+            self.current_frame = 0;
             *frame_timer = 0.0;
             self.attack_frame = 0;
         }
@@ -253,18 +257,25 @@ impl Player {
     }
 
 
-    pub fn move_player(&mut self, world: &mut World, current_frame: &mut usize, frame_timer: &mut f32, client_id: i32) {
+    pub fn move_player(&mut self, world: &mut World, frame_timer: &mut f32, client_id: i32) {
         if client_id == self.get_owner() {
-            self.process_input(world, current_frame, frame_timer);
+            self.process_input(world, frame_timer);
         }
         self.apply_physics(world);
+        
+        let new_pos = world.actor_pos(self.collider);
+        let old_pos = vec2(self.wrapper.position_data.0,self.wrapper.position_data.1);
+        self.wrapper.position_data = (new_pos.x,new_pos.y);
+        if new_pos!=old_pos {
+            self.pos_updated = true;
+        }
     }
 
     
 
 
-    pub fn handle(&mut self, world: &mut World, current_frame: &mut usize, frame_timer: &mut f32, client_id: i32, character_type: CharacterType, animation_frames: &CharacterAnimationFrames) {
-        self.move_player(world, current_frame, frame_timer, client_id);
+    pub fn handle(&mut self, world: &mut World, frame_timer: &mut f32, client_id: i32, character_type: CharacterType, animation_frames: &CharacterAnimationFrames) {
+        self.move_player(world, frame_timer, client_id);
         let pos = world.actor_pos(self.collider);
         let on_ground = world.collide_check(self.collider, pos + vec2(0., 1.));
         let moving = self.speed.x.abs() > 0.0;
@@ -282,7 +293,7 @@ impl Player {
         *frame_timer += get_frame_time();
         if *frame_timer >= 0.1 {
             *frame_timer = 0.0;
-            *current_frame += 1;
+            self.current_frame += 1;
 
 
             let frames = match character_type {
@@ -292,20 +303,20 @@ impl Player {
 
             match self.wrapper.state {
                 PlayerState::Running => {
-                    *current_frame = (*current_frame + 1) % frames.run;
+                    self.current_frame = (self.current_frame + 1) % frames.run;
                 },
                 PlayerState::Idle => {
-                    *current_frame = (*current_frame + 1) % frames.idle;
+                    self.current_frame = (self.current_frame + 1) % frames.idle;
                 },
                 PlayerState::Jumping => {
-                    *current_frame = (*current_frame + 1) % frames.jumping;
+                    self.current_frame = (self.current_frame + 1) % frames.jumping;
                 },
                 PlayerState::Attack1 => {
                    
                     if self.attack_frame < frames.attack1 - 1 {
                         
                         self.attack_frame += 1;
-                        *current_frame = self.attack_frame;
+                        self.current_frame = self.attack_frame;
                     } else {
                         
                         self.attack_frame = 0;
@@ -317,14 +328,14 @@ impl Player {
                             PlayerState::Idle
                         };
                 
-                        *current_frame = 0;
+                        self.current_frame = 0;
                     }
                 },
                 PlayerState::Attack2 => {
                   
                     if self.attack_frame < frames.attack2 - 1 {
                         self.attack_frame += 1;
-                        *current_frame = self.attack_frame;
+                        self.current_frame = self.attack_frame;
                     } else {
                         self.attack_frame = 0;
                         self.wrapper.state = if !on_ground {
@@ -334,14 +345,14 @@ impl Player {
                         } else {
                             PlayerState::Idle
                         };
-                        *current_frame = 0;
+                        self.current_frame = 0;
                     }
                 }
             }
         }
     }
 
-    pub fn render(&self, current_frame: usize, textures: &CharacterTextures, player_size: Vec2, character_type: CharacterType, world: &World, player_size_data: &PlayerSizeData) {
+    pub fn render(&self, textures: &CharacterTextures, player_size: Vec2, character_type: CharacterType, world: &World, player_size_data: &PlayerSizeData) {
 
         let texture = match character_type {
             CharacterType::Witcher => match self.wrapper.state {
@@ -381,7 +392,7 @@ impl Player {
 
         let frame_to_draw = match self.wrapper.state {
             PlayerState::Attack1 | PlayerState::Attack2 => self.attack_frame,
-            _ => current_frame,
+            _ => self.current_frame,
         };
 
         let src_rect = match character_type{

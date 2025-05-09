@@ -62,13 +62,11 @@ async fn main() {
         );
         game_handle.lock().unwrap().add_player(player);
     }
-    let mut current_frame = 0;
+
+
     let mut frame_timer = 0.0;
     let camera = Camera2D::from_display_rect(Rect::new(0.0, 152.0, 320.0, -152.0));
    
-
-
-
     
 
     loop {
@@ -85,13 +83,15 @@ async fn main() {
         for (_, player) in wrapper_map.iter_mut() {
             player.handle(
                 &mut world.lock().unwrap(),
-                &mut current_frame,
                 &mut frame_timer,
                 game_handle_lock.get_personal_id(),
                 player.wrapper.character_type,
                 &animation_frames,
             );
-
+            if player.pos_updated {
+                player.pos_updated = false;
+                println!("Debug print verifying player position: {:?}", player.wrapper.position_data);
+            }
             let character_type = player.wrapper.character_type;
             let frame_size = match character_type {
                 CharacterType::Witcher => &player_size_data.witcher.idle.size_frame,
@@ -101,7 +101,6 @@ async fn main() {
             let player_size = vec2(frame_size.width / 10.0, frame_size.height / 10.0);
 
             player.render(
-                current_frame,
                 &character_textures,
                 player_size,
                 character_type,
