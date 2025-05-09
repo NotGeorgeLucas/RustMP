@@ -121,7 +121,7 @@ impl GameHandle {
     }
 
 
-    pub fn get_player_wrappers(&self) -> Arc<Mutex<HashMap<i32, DataWrapper>>> {
+    pub fn get_network_wrappers(&self) -> Arc<Mutex<HashMap<i32, DataWrapper>>> {
         if self.server.is_some(){
             self.server.as_ref().unwrap().lock().unwrap().get_synced_players()
         }else if self.client.is_some(){

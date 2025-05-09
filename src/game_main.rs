@@ -80,7 +80,7 @@ async fn main() {
         let wrapper_map_mutex = game_handle_lock.get_player_wrapper_map();
         let mut wrapper_map = wrapper_map_mutex.lock().unwrap();
 
-        for (_, player) in wrapper_map.iter_mut() {
+        for (player_index, player) in wrapper_map.iter_mut() {
             player.handle(
                 &mut world.lock().unwrap(),
                 &mut frame_timer,
@@ -91,6 +91,11 @@ async fn main() {
             if player.pos_updated {
                 player.pos_updated = false;
                 println!("Debug print verifying player position: {:?}", player.wrapper.position_data);
+                let network_wrappers = game_handle_lock.get_network_wrappers();
+                let mut network_wrappers_locked = network_wrappers.lock().unwrap();
+                if let Some(net_pl) = network_wrappers_locked.get_mut(player_index) {
+                    net_pl.position_data = player.wrapper.position_data;
+                }
             }
             let character_type = player.wrapper.character_type;
             let frame_size = match character_type {
