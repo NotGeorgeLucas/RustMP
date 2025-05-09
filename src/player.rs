@@ -440,9 +440,7 @@ impl Player {
                 flip_x: self.speed.x < 0.0,
                 ..Default::default()
             },
-        );
-        draw_rectangle_lines(dest_rect.x, dest_rect.y, dest_rect.w, dest_rect.h, 2.0, RED);    
-        draw_rectangle_lines(collider_pos.x, collider_pos.y, collider_size.x, collider_size.y, 2.0, BLUE);    
+        );  
     }
 }
 

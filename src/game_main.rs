@@ -90,7 +90,6 @@ async fn main() {
             );
             if player.pos_updated {
                 player.pos_updated = false;
-                println!("Debug print verifying player position: {:?}", player.wrapper.position_data);
                 let network_wrappers = game_handle_lock.get_network_wrappers();
                 let mut network_wrappers_locked = network_wrappers.lock().unwrap();
                 if let Some(net_pl) = network_wrappers_locked.get_mut(player_index) {
