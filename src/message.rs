@@ -2,12 +2,28 @@ use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use crate::player::DataWrapper;
 
+#[derive(Serialize,Deserialize,Debug,Clone)]
+pub struct MotionDataContainer{
+    pub x: f32,
+    pub y: f32,
+    pub x_speed: f32,
+    pub y_speed: f32,
+}
+
+impl MotionDataContainer {
+    pub fn new(x: f32, y: f32, x_speed: f32, y_speed: f32) -> Self {
+        MotionDataContainer { x, y, x_speed, y_speed }
+    }
+}
+
+
 #[derive(Serialize, Deserialize,Debug,Clone)]
 pub enum ObjectType{
     StringMsg(String),
     Integer(i32),
     PlayerMap(HashMap<i32, DataWrapper>),
     Player(DataWrapper),
+    MotionData(MotionDataContainer),
 }
 
 #[derive(Serialize, Deserialize,Debug,Clone)]

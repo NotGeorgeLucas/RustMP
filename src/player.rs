@@ -1,7 +1,7 @@
 use serde::{Serialize,Deserialize};
 use macroquad::prelude::*;
 use macroquad_platformer::*;
-use crate::network_sync::NetworkSync;
+use crate::{message::MotionDataContainer, network_sync::NetworkSync};
 use serde_json;
 
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
@@ -29,6 +29,13 @@ pub struct DataWrapper {
     pub object_id: i32,
     pub character_type: CharacterType,
     pub position_data: (f32, f32),
+    pub speed_data: (f32, f32),
+}
+
+impl DataWrapper {
+    pub fn generate_motion_data(&self) -> MotionDataContainer{
+        MotionDataContainer::new(self.position_data.0, self.position_data.1, self.speed_data.0, self.speed_data.1)
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -37,7 +44,7 @@ pub struct Player {
     pub speed: Vec2,
     pub wrapper: DataWrapper,
     pub attack_frame: usize,
-    pub pos_updated: bool,
+    pub speed_updated: bool,
     pub current_frame: usize,
 }
 
@@ -198,10 +205,10 @@ impl Player {
 
         Player {
             collider: world.add_actor(vec2(wrapper.position_data.0, wrapper.position_data.1), width, height),
-            speed: vec2(0.0, 0.0),
+            speed: vec2(wrapper.speed_data.0, wrapper.speed_data.1),
             wrapper,
             attack_frame: 0,
-            pos_updated: false,
+            speed_updated: false,
             current_frame: 0,
         }
     }
@@ -258,16 +265,19 @@ impl Player {
 
 
     pub fn move_player(&mut self, world: &mut World, frame_timer: &mut f32, client_id: i32) {
+        let old_vel = self.speed;
         if client_id == self.get_owner() {
             self.process_input(world, frame_timer);
         }
         self.apply_physics(world);
-        
-        let new_pos = world.actor_pos(self.collider);
-        let old_pos = vec2(self.wrapper.position_data.0,self.wrapper.position_data.1);
-        self.wrapper.position_data = (new_pos.x,new_pos.y);
-        if new_pos!=old_pos {
-            self.pos_updated = true;
+        if client_id == self.get_owner() {
+            let new_vel = self.speed;
+            let new_pos = world.actor_pos(self.collider);
+            self.wrapper.position_data = (new_pos.x,new_pos.y);
+            self.wrapper.speed_data = (new_vel.x, new_vel.y);
+            if new_vel!=old_vel {
+                self.speed_updated = true;
+            }
         }
     }
 

@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex, mpsc::{self, Sender, Receiver}};
 use std::time::Duration;
 use std::io::ErrorKind;
 use colored::Colorize;
+use macroquad::math::vec2;
 use macroquad_platformer::World;
 
 #[derive(Clone)]
@@ -86,6 +87,23 @@ impl Client{
                                 self.new_player_id = Some(*new_player_id);
                             }else{
                                 eprintln!("Invalid player id return type");
+                            }
+                        },
+                        "motion_update_broadcast" => {
+                            if let Some(ObjectType::Integer(pl_id)) = received_map.get("object_id") {
+                                if let Some(pl) = self.player_map_mutex.lock().unwrap().get_mut(pl_id) {
+                                    if let Some(ObjectType::MotionData(motion_data)) = received_map.get("motion_data"){
+                                        pl.wrapper.position_data = (motion_data.x, motion_data.y);
+                                        pl.wrapper.speed_data = (motion_data.x_speed, motion_data.y_speed);
+
+                                        let mut locked_world = self.world.lock().unwrap();
+                                        locked_world.set_actor_position(pl.collider, vec2(motion_data.x, motion_data.y));
+                                        
+                                        pl.speed = vec2(motion_data.x_speed, motion_data.y_speed);
+                                    }
+                                }
+                            }else{
+                                eprintln!("object_id for motion_update_broadcast was incorrectly supplied");
                             }
                         },
                         _ =>{

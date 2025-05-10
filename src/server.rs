@@ -1,6 +1,6 @@
 use crate::network_sync::NetworkSync;
 use crate::{CLIENT_PORT, PLAYER_SIZE_DATA, SERVER_PORT};
-use crate::message::{Message,ObjectType};
+use crate::message::{Message, MotionDataContainer, ObjectType};
 use crate::player::{DataWrapper, Player};
 use std::collections::HashMap;
 use std::net::{UdpSocket, SocketAddr};
@@ -89,12 +89,31 @@ impl Server {
     }
 
 
+    pub fn get_user_map(&self) -> &HashMap<i32,SocketAddr> {
+        &self.user_map
+    }
+
+
     pub fn add_player(&mut self, mut player: Player, owner_id: i32) -> i32{
         let new_id = self.gen_new_player_id();
         player.wrapper.owner_id = owner_id;
 
         self.synced_players.lock().unwrap().insert(new_id, player.wrapper);
         new_id        
+    }
+
+
+    pub fn send_motion_update(&self, target_vector: Vec<&SocketAddr>, object_id: i32, motion_data: MotionDataContainer) {
+        let mut message = HashMap::new();
+        message.insert("goal".to_string(), ObjectType::StringMsg("motion_update_broadcast".to_string()));
+        message.insert("object_id".to_string(), ObjectType::Integer(object_id));
+        message.insert("motion_data".to_string(), ObjectType::MotionData(motion_data));
+
+        for target in target_vector.iter(){
+            if let Err(e) = self.send_message(&message, **target){
+                eprintln!("Failed to send message: {}", e);
+            }
+        }
     }
 
 

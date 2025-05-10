@@ -56,6 +56,7 @@ async fn main() {
                 object_id: -1,
                 character_type: CharacterType::Witch,
                 position_data: (15.0, 15.0),
+                speed_data: (0.0, 0.0),
             },
             &mut world.lock().unwrap(),
             &player_size_data,
@@ -88,13 +89,9 @@ async fn main() {
                 player.wrapper.character_type,
                 &animation_frames,
             );
-            if player.pos_updated {
-                player.pos_updated = false;
-                let network_wrappers = game_handle_lock.get_network_wrappers();
-                let mut network_wrappers_locked = network_wrappers.lock().unwrap();
-                if let Some(net_pl) = network_wrappers_locked.get_mut(player_index) {
-                    net_pl.position_data = player.wrapper.position_data;
-                }
+            if player.speed_updated {
+                player.speed_updated = false;
+                game_handle_lock.send_motion_update(*player_index, player.wrapper.generate_motion_data());
             }
             let character_type = player.wrapper.character_type;
             let frame_size = match character_type {

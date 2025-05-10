@@ -1,3 +1,4 @@
+use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::thread;
@@ -6,7 +7,7 @@ use crate::client::Client;
 use crate::server::Server;
 use crate::player::{DataWrapper, Player};
 use crate::network_sync::NetworkSync;
-use crate::message::ObjectType;
+use crate::message::{MotionDataContainer, ObjectType};
 use crate::PLAYER_SIZE_DATA;
 use colored::*;
 use macroquad_platformer::World;
@@ -109,6 +110,33 @@ impl GameHandle {
         } else{
             eprintln!("Cannot request players when running as the server, or client was not initialized correctly!");
         }
+    }
+
+
+    pub fn send_motion_update(&self, object_id: i32, motion_data: MotionDataContainer) {
+        if self.server.is_some(){
+            let server_locked = self.server.as_ref().unwrap().lock().unwrap();
+
+            if let Some(wrapper) = server_locked.get_synced_players().lock().unwrap().get_mut(&object_id){
+                wrapper.position_data = (motion_data.x, motion_data.y);
+                wrapper.speed_data = (motion_data.x_speed, motion_data.y_speed);
+                let socket_map = server_locked.get_user_map();
+                let mut target_vector: Vec<&SocketAddr> = Vec::new();
+    
+                for (_, target) in socket_map.iter(){
+                    
+                    if target.to_string() != "127.0.0.1:13882" {
+                        target_vector.push(target);
+                    }
+                }
+                server_locked.send_motion_update(target_vector, object_id, motion_data);
+            }else{
+                eprintln!("No object with ID {} found inside server's synced players", object_id);
+            }
+            
+        }else if self.client.is_some(){
+            self.client.as_ref().unwrap().lock().unwrap().get_world();
+        }else{ panic!("Game Handle has not been initialized properly"); }
     }
 
 
