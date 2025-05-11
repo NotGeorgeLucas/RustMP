@@ -58,9 +58,11 @@ impl GameHandle {
 
                 let client_lock = client_arc.lock().unwrap();
                 let new_player_id = client_lock.get_new_player_id();
+                let synced_players = client_lock.get_synced_players();
                 drop(client_lock);
                 if new_player_id.is_some(){
                     player.set_object_id(new_player_id.unwrap());
+                    synced_players.lock().unwrap().insert(new_player_id.unwrap(), player.wrapper);    
 
                     player.set_owner(self.personal_id);
 
@@ -134,8 +136,25 @@ impl GameHandle {
                 eprintln!("No object with ID {} found inside server's synced players", object_id);
             }
             
-        }else if self.client.is_some(){
-            self.client.as_ref().unwrap().lock().unwrap().get_world();
+        } else if self.client.is_some(){
+            let client_locked = self.client.as_ref().unwrap().lock().unwrap();
+            
+            if let Some(wrapper) = client_locked.get_synced_players().lock().unwrap().get_mut(&object_id){
+                wrapper.position_data = (motion_data.x, motion_data.y);
+                wrapper.speed_data = (motion_data.x_speed, motion_data.y_speed);
+                
+                let mut message: HashMap<String, ObjectType> = HashMap::new();
+
+                message.insert("goal".to_string(), ObjectType::StringMsg("object_pos_update".to_string()));
+                message.insert("object_id".to_string(), ObjectType::Integer(wrapper.object_id));
+                message.insert("motion_data".to_string(), ObjectType::MotionData(motion_data));
+
+                if let Err(e) = client_locked.send_to_receive_thread(message) {
+                    eprintln!("Failed to send message: {}", e);
+                }
+            }else{
+                eprintln!("No object with ID {} found inside client's synced players", object_id);
+            }
         }else{ panic!("Game Handle has not been initialized properly"); }
     }
 

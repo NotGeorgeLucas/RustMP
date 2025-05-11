@@ -10,6 +10,7 @@ use std::thread;
 use std::str::FromStr;
 use std::time::Duration;
 use colored::*;
+use macroquad::math::vec2;
 use macroquad_platformer::World;
 
 #[derive(Clone)]
@@ -162,8 +163,44 @@ impl Server {
                                 eprintln!("Missing 'player' field in received_map");
                             }
                         },
+                        "object_pos_update" => {
+                            if let Some(ObjectType::Integer(pl_id)) = received_map.get("object_id") {
+                                if let Some(pl) = self.player_map_mutex.lock().unwrap().get_mut(pl_id) {
+                                    if let Some(ObjectType::MotionData(motion_data)) = received_map.get("motion_data"){
+                                        pl.wrapper.position_data = (motion_data.x, motion_data.y);
+                                        pl.wrapper.speed_data = (motion_data.x_speed, motion_data.y_speed);
+                                        pl.wrapper.state = motion_data.animation_state;
+
+                                        let mut locked_world = self.world.lock().unwrap();
+                                        locked_world.set_actor_position(pl.collider, vec2(motion_data.x, motion_data.y));
+                                        
+                                        pl.speed = vec2(motion_data.x_speed, motion_data.y_speed);
+
+
+
+                                        let mut target_vector: Vec<&SocketAddr> = Vec::new();
+                            
+                                        for (_, target) in self.user_map.iter(){
+
+                                            if target.to_string() != "127.0.0.1:13882" && *target != client_address {
+                                                target_vector.push(target);
+                                            }
+                                        }
+                                        
+                                        self.send_motion_update(target_vector, *pl_id, motion_data.to_owned());
+
+                                    } else {
+                                        eprintln!("Motion Data for motion updated was not provided in the proper format");
+                                    }
+                                } else{
+                                    eprintln!("Object with id {} not found in server's player map", pl_id);
+                                }
+                            }else{
+                                eprintln!("object_id for motion_update_broadcast was incorrectly supplied");
+                            }
+                        },
                         _ =>{
-                            println!("Unknown message type");
+                            println!("{}", "Unknown message type".red());
                         }
                     }
                 }

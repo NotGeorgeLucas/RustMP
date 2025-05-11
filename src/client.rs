@@ -1,4 +1,4 @@
-use crate::message::{Message,ObjectType};
+use crate::message::{Message, ObjectType};
 use crate::player::{DataWrapper,Player};
 use crate::CLIENT_PORT;
 use std::collections::HashMap;
@@ -57,6 +57,7 @@ impl Client{
         self.personal_id
     }
     
+
     #[allow(unused_mut)]
     fn process_message(&mut self,message_received: &Message) -> HashMap<String,ObjectType>{
 
@@ -101,14 +102,18 @@ impl Client{
                                         locked_world.set_actor_position(pl.collider, vec2(motion_data.x, motion_data.y));
                                         
                                         pl.speed = vec2(motion_data.x_speed, motion_data.y_speed);
+                                    } else {
+                                        eprintln!("Motion Data for motion updated was not provided in the proper format");
                                     }
+                                } else{
+                                    eprintln!("Object with id {} not found in client's player map", pl_id);
                                 }
                             }else{
                                 eprintln!("object_id for motion_update_broadcast was incorrectly supplied");
                             }
                         },
                         _ =>{
-                            println!("Unknown message type");
+                            println!("{}", "Unknown message type!".red());
                         }
                     }
                 }
@@ -178,7 +183,7 @@ impl Client{
                 eprintln!("Failed to send to receive thread: {:?}", e);
             }
         } else {
-            eprintln!("{}","Receive the pipe to receive thread is none!".bold().bright_red());
+            eprintln!("{}","The pipe to receive thread is none!".bold().bright_red());
         }
         Ok(())
     }
