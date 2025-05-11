@@ -46,6 +46,7 @@ pub struct Player {
     pub attack_frame: usize,
     pub speed_updated: bool,
     pub current_frame: usize,
+    pub facing_right: bool,
 }
 
 pub struct CharacterTextures {
@@ -67,7 +68,7 @@ impl CharacterTextures {
             witch: PlayerTextures { 
                 run: load_texture("assets/W_blue/B_run.png").await.unwrap(),
                 idle: load_texture("assets/W_blue/B_idle.png").await.unwrap(),
-                jump: load_texture("assets/W_blue/B_idle.png").await.unwrap(),
+                jump: load_texture("assets/W_blue/B_charge.png").await.unwrap(),
                 attack1: load_texture("assets/W_blue/Attack1.png").await.unwrap(),
                 attack2: load_texture("assets/W_blue/Attack2.png").await.unwrap(),
             },
@@ -165,7 +166,7 @@ impl CharacterAnimationFrames {
             witch: AnimationFrames {
                 run: 8,
                 idle: 6,
-                jumping: 6,
+                jumping: 5,
                 attack1: 9,
                 attack2: 9,
                 death: 12,
@@ -194,22 +195,29 @@ impl Player {
     pub fn construct_from_wrapper(wrapper: DataWrapper, world: &mut World, player_size_data: &PlayerSizeData) -> Player {
         let (width, height) = match wrapper.character_type {
             CharacterType::Witcher => {
-                let size = &player_size_data.witcher.idle.size_frame;
-                ((size.width / 30.0) as i32, (size.height / 30.0) as i32)
+                (32,64)
             }
             CharacterType::Witch => {
                 let size = &player_size_data.witch.idle.size_frame;
                 ((size.width / 10.0) as i32, (size.height / 10.0) as i32)
             }
         };
+        let position = if wrapper.character_type == CharacterType::Witcher {
+        
+        vec2(25.0, 25.0)
+    } else {
+        
+        vec2(wrapper.position_data.0, wrapper.position_data.1)
+    };
 
         Player {
-            collider: world.add_actor(vec2(wrapper.position_data.0, wrapper.position_data.1), width, height),
+            collider: world.add_actor(position, width, height),
             speed: vec2(wrapper.speed_data.0, wrapper.speed_data.1),
             wrapper,
             attack_frame: 0,
             speed_updated: false,
             current_frame: 0,
+            facing_right: true,
         }
     }
     
@@ -220,8 +228,10 @@ impl Player {
         if self.wrapper.state != PlayerState::Attack1 && self.wrapper.state != PlayerState::Attack2 {
             if is_key_down(KeyCode::D) {
                 self.speed.x = 100.0;
+                self.facing_right = true;
             } else if is_key_down(KeyCode::A) {
                 self.speed.x = -100.0;
+                self.facing_right = false;
             } else {
                 self.speed.x = 0.0;
             }
@@ -233,8 +243,7 @@ impl Player {
         if is_key_pressed(KeyCode::Space) && on_ground && self.wrapper.state != PlayerState::Attack1 {
             self.speed.y = -120.0;
         }
-
-        if is_key_pressed(KeyCode::F) && on_ground && self.wrapper.state != PlayerState::Attack1 {
+         if is_key_pressed(KeyCode::F) && on_ground && self.wrapper.state != PlayerState::Attack1 {
             self.wrapper.state = PlayerState::Attack1;
             self.current_frame = 0;
             *frame_timer = 0.0;
@@ -246,6 +255,11 @@ impl Player {
             self.current_frame = 0;
             *frame_timer = 0.0;
             self.attack_frame = 0;
+             if self.facing_right {
+            self.speed.x = 100.0; 
+        } else {
+            self.speed.x = -100.0; 
+        }
         }
     }
 
@@ -363,7 +377,10 @@ impl Player {
     }
 
     pub fn render(&self, textures: &CharacterTextures, player_size: Vec2, character_type: CharacterType, world: &World, player_size_data: &PlayerSizeData) {
-
+        let player_width = 100.0;  
+        let player_height = 100.0; 
+        let witcher_width = player_width * 1.5;  
+        let witcher_height = player_height * 1.5; 
         let texture = match character_type {
             CharacterType::Witcher => match self.wrapper.state {
                 PlayerState::Running => &textures.witcher.run,
@@ -422,21 +439,66 @@ impl Player {
 
         let collider_pos = world.actor_pos(self.collider);
         let mut collider_size = vec2(player_size.x, player_size.y);
+        
 
         let scale = match character_type{
-            CharacterType::Witcher => 1.0 / 3.0,
-            CharacterType::Witch => 1.0,
+            CharacterType::Witcher => 1.0,
+            CharacterType::Witch => 0.8,
         };
 
         collider_size = collider_size * scale;
 
-        let dest_rect = Rect::new(
+       if character_type == CharacterType::Witch {
+    if self.wrapper.state == PlayerState::Attack1 || self.wrapper.state == PlayerState::Attack2 {
+        collider_size.x *= 4.0; 
+    } else {
+        if self.wrapper.state == PlayerState::Jumping {
+        collider_size.x *= 2.0;
+        }
+        else{
+            collider_size.x *= 1.5;
+          
+        }
+    }
+}
+
+        let dest_rect = if character_type == CharacterType::Witch {
+    Rect::new(
+        collider_pos.x,
+        collider_pos.y + 20.0, 
+        collider_size.x,
+        collider_size.y,
+    )
+} else {
+    Rect::new(
+       collider_pos.x - (witcher_width - 16.0) / 2.0,  
+            collider_pos.y - 35.0,         
+            witcher_width,
+            witcher_height
+    )
+};
+
+          /*if character_type == CharacterType::Witch {
+        draw_rectangle_lines(
             collider_pos.x,
-            collider_pos.y,
+            collider_pos.y + 20.0,
             collider_size.x,
             collider_size.y,
+            2.0, // Толщина линии
+            RED, // Цвет линии
         );
-
+    }*/
+     if character_type == CharacterType::Witcher {
+        draw_rectangle_lines(
+             collider_pos.x, 
+            collider_pos.y, 
+            32.0, 
+            64.0, 
+            2.0, 
+            RED
+        );
+    }
+      
        
     
         draw_texture_ex(
@@ -447,7 +509,7 @@ impl Player {
             DrawTextureParams {
                 dest_size: Some(vec2(dest_rect.w, dest_rect.h)),
                 source: Some(src_rect),
-                flip_x: self.speed.x < 0.0,
+                flip_x: !self.facing_right,
                 ..Default::default()
             },
         );  
