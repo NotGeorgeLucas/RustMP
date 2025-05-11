@@ -34,7 +34,13 @@ pub struct DataWrapper {
 
 impl DataWrapper {
     pub fn generate_motion_data(&self) -> MotionDataContainer{
-        MotionDataContainer::new(self.position_data.0, self.position_data.1, self.speed_data.0, self.speed_data.1)
+        MotionDataContainer::new(
+            self.position_data.0,
+            self.position_data.1,
+            self.speed_data.0,
+            self.speed_data.1,
+            self.state
+        )
     }
 }
 
@@ -228,10 +234,8 @@ impl Player {
         if self.wrapper.state != PlayerState::Attack1 && self.wrapper.state != PlayerState::Attack2 {
             if is_key_down(KeyCode::D) {
                 self.speed.x = 100.0;
-                self.facing_right = true;
             } else if is_key_down(KeyCode::A) {
                 self.speed.x = -100.0;
-                self.facing_right = false;
             } else {
                 self.speed.x = 0.0;
             }
@@ -283,6 +287,7 @@ impl Player {
         if client_id == self.get_owner() {
             self.process_input(world, frame_timer);
         }
+        self.facing_right = self.speed.x >=0.0;
         self.apply_physics(world);
         if client_id == self.get_owner() {
             let new_vel = self.speed;

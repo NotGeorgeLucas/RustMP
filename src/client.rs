@@ -57,7 +57,7 @@ impl Client{
         self.personal_id
     }
     
-
+    #[allow(unused_mut)]
     fn process_message(&mut self,message_received: &Message) -> HashMap<String,ObjectType>{
 
         let mut response_map = HashMap::new();
@@ -95,6 +95,7 @@ impl Client{
                                     if let Some(ObjectType::MotionData(motion_data)) = received_map.get("motion_data"){
                                         pl.wrapper.position_data = (motion_data.x, motion_data.y);
                                         pl.wrapper.speed_data = (motion_data.x_speed, motion_data.y_speed);
+                                        pl.wrapper.state = motion_data.animation_state;
 
                                         let mut locked_world = self.world.lock().unwrap();
                                         locked_world.set_actor_position(pl.collider, vec2(motion_data.x, motion_data.y));

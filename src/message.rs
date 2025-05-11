@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
-use crate::player::DataWrapper;
+use crate::player::{DataWrapper, PlayerState};
 
 #[derive(Serialize,Deserialize,Debug,Clone)]
 pub struct MotionDataContainer{
@@ -8,11 +8,12 @@ pub struct MotionDataContainer{
     pub y: f32,
     pub x_speed: f32,
     pub y_speed: f32,
+    pub animation_state: PlayerState,
 }
 
 impl MotionDataContainer {
-    pub fn new(x: f32, y: f32, x_speed: f32, y_speed: f32) -> Self {
-        MotionDataContainer { x, y, x_speed, y_speed }
+    pub fn new(x: f32, y: f32, x_speed: f32, y_speed: f32, animation_state: PlayerState) -> Self {
+        MotionDataContainer { x, y, x_speed, y_speed, animation_state}
     }
 }
 
