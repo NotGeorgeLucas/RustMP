@@ -7,7 +7,7 @@ use crate::client::Client;
 use crate::server::Server;
 use crate::player::{DataWrapper, Player};
 use crate::network_sync::NetworkSync;
-use crate::message::{MotionDataContainer, ObjectType};
+use crate::message::{MotionDataContainer, ObjectType, RpcCallContainer};
 use crate::PLAYER_SIZE_DATA;
 use colored::*;
 use macroquad_platformer::World;
@@ -155,6 +155,36 @@ impl GameHandle {
             }else{
                 eprintln!("No object with ID {} found inside client's synced players", object_id);
             }
+        }else{ panic!("Game Handle has not been initialized properly"); }
+    }
+
+
+    pub fn send_rpc(&self, call_container: RpcCallContainer) {
+        if self.server.is_some(){
+            let server_locked = self.server.as_ref().unwrap().lock().unwrap();
+
+            let socket_map = server_locked.get_user_map();
+            let mut target_vector: Vec<&SocketAddr> = Vec::new();
+
+            for (_, target) in socket_map.iter(){
+                
+                if target.to_string() != "127.0.0.1:13882" {
+                    target_vector.push(target);
+                }
+            }
+            server_locked.send_rpc(target_vector, call_container);
+        }else if self.client.is_some(){
+            let client_locked = self.client.as_ref().unwrap().lock().unwrap();
+
+            let mut message: HashMap<String, ObjectType> = HashMap::new();
+
+            message.insert("goal".to_string(), ObjectType::StringMsg("rpc_call".to_string()));
+            message.insert("rpc_data".to_string(), ObjectType::RpcCall(call_container));
+
+            if let Err(e) = client_locked.send_to_receive_thread(message) {
+                eprintln!("Failed to send message: {}", e);
+            }
+
         }else{ panic!("Game Handle has not been initialized properly"); }
     }
 

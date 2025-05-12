@@ -1,6 +1,7 @@
 use crate::network_sync::NetworkSync;
 use crate::{CLIENT_PORT, PLAYER_SIZE_DATA, SERVER_PORT};
-use crate::message::{Message, MotionDataContainer, ObjectType};
+use crate::rpc_funcs::invoke_rpc;
+use crate::message::{Message, MotionDataContainer, ObjectType, RpcCallContainer};
 use crate::player::{DataWrapper, Player};
 use std::collections::HashMap;
 use std::net::{UdpSocket, SocketAddr};
@@ -118,6 +119,19 @@ impl Server {
     }
 
 
+    pub fn send_rpc(&self, target_vector: Vec<&SocketAddr>, rpc_data: RpcCallContainer) {
+        let mut message: HashMap<String, ObjectType> = HashMap::new();
+        message.insert("goal".to_string(), ObjectType::StringMsg("rpc_call".to_string()));
+        message.insert("rpc_data".to_string(), ObjectType::RpcCall(rpc_data));
+
+        for target in target_vector.iter(){
+            if let Err(e) = self.send_message(&message, **target){
+                eprintln!("Failed to send message: {}", e);
+            }
+        }
+    }
+
+
     fn process_message(&mut self,message_received: &Message,client_address:SocketAddr) -> HashMap<String,ObjectType>{
         let mut response_map = HashMap::new();
         let received_map = message_received.get_message_map();
@@ -199,6 +213,21 @@ impl Server {
                                 }
                             }else{
                                 eprintln!("object_id for motion_update_broadcast was incorrectly supplied");
+                            }
+                        },
+                        "rpc_call" => {
+                            if let Some(ObjectType::RpcCall(rpc_data)) = received_map.get("rpc_data"){
+                                invoke_rpc(&rpc_data);
+                    
+                    
+                                let mut target_vector: Vec<&SocketAddr> = Vec::new();
+                    
+                                for (_, target) in self.user_map.iter(){
+
+                                    if target.to_string() != "127.0.0.1:13882" && *target != client_address {
+                                        target_vector.push(target);
+                                    }
+                                }
                             }
                         },
                         _ =>{
