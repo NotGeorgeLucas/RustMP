@@ -34,13 +34,7 @@ pub struct DataWrapper {
 
 impl DataWrapper {
     pub fn generate_motion_data(&self) -> MotionDataContainer{
-        MotionDataContainer::new(
-            self.position_data.0,
-            self.position_data.1,
-            self.speed_data.0,
-            self.speed_data.1,
-            self.state
-        )
+        MotionDataContainer::new(self.position_data.0, self.position_data.1, self.speed_data.0, self.speed_data.1, self.state)
     }
 }
 
@@ -234,8 +228,10 @@ impl Player {
         if self.wrapper.state != PlayerState::Attack1 && self.wrapper.state != PlayerState::Attack2 {
             if is_key_down(KeyCode::D) {
                 self.speed.x = 100.0;
+                self.facing_right = true;
             } else if is_key_down(KeyCode::A) {
                 self.speed.x = -100.0;
+                self.facing_right = false;
             } else {
                 self.speed.x = 0.0;
             }
@@ -287,7 +283,6 @@ impl Player {
         if client_id == self.get_owner() {
             self.process_input(world, frame_timer);
         }
-        self.facing_right = self.speed.x >=0.0;
         self.apply_physics(world);
         if client_id == self.get_owner() {
             let new_vel = self.speed;
@@ -444,7 +439,7 @@ impl Player {
 
         let collider_pos = world.actor_pos(self.collider);
         let mut collider_size = vec2(player_size.x, player_size.y);
-        
+            
 
         let scale = match character_type{
             CharacterType::Witcher => 1.0,
@@ -453,56 +448,56 @@ impl Player {
 
         collider_size = collider_size * scale;
 
-       if character_type == CharacterType::Witch {
-    if self.wrapper.state == PlayerState::Attack1 || self.wrapper.state == PlayerState::Attack2 {
-        collider_size.x *= 4.0; 
-    } else {
-        if self.wrapper.state == PlayerState::Jumping {
-        collider_size.x *= 2.0;
+        if character_type == CharacterType::Witch {
+            if self.wrapper.state == PlayerState::Attack1 || self.wrapper.state == PlayerState::Attack2 {
+                collider_size.x *= 4.0; 
+            } else {
+                if self.wrapper.state == PlayerState::Jumping {
+                collider_size.x *= 2.0;
+                }
+                else{
+                    collider_size.x *= 1.5;
+                
+                }
+            }
         }
-        else{
-            collider_size.x *= 1.5;
-          
-        }
-    }
-}
 
         let dest_rect = if character_type == CharacterType::Witch {
-    Rect::new(
-        collider_pos.x,
-        collider_pos.y + 20.0, 
-        collider_size.x,
-        collider_size.y,
-    )
-} else {
-    Rect::new(
-       collider_pos.x - (witcher_width - 16.0) / 2.0,  
-            collider_pos.y - 35.0,         
-            witcher_width,
-            witcher_height
-    )
-};
+            Rect::new(
+                collider_pos.x,
+                collider_pos.y + 20.0, 
+                collider_size.x,
+                collider_size.y,
+            )
+        } else {
+            Rect::new(
+                collider_pos.x - (witcher_width - 16.0) / 2.0,  
+                collider_pos.y - 35.0,         
+                witcher_width,
+                witcher_height
+            )
+        };
 
-          /*if character_type == CharacterType::Witch {
-        draw_rectangle_lines(
-            collider_pos.x,
-            collider_pos.y + 20.0,
-            collider_size.x,
-            collider_size.y,
-            2.0, // Толщина линии
-            RED, // Цвет линии
-        );
-    }*/
-     if character_type == CharacterType::Witcher {
-        draw_rectangle_lines(
-             collider_pos.x, 
-            collider_pos.y, 
-            32.0, 
-            64.0, 
-            2.0, 
-            RED
-        );
-    }
+        /*if character_type == CharacterType::Witch {
+            draw_rectangle_lines(
+                collider_pos.x,
+                collider_pos.y + 20.0,
+                collider_size.x,
+                collider_size.y,
+                2.0, // Толщина линии
+                RED, // Цвет линии
+            );
+        }*/
+        /*if character_type == CharacterType::Witcher {
+            draw_rectangle_lines(
+                collider_pos.x, 
+                collider_pos.y, 
+                32.0, 
+                64.0, 
+                2.0, 
+                RED
+            );
+        }*/
       
        
     
