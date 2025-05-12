@@ -1,6 +1,7 @@
 use crate::message::{Message, ObjectType};
 use crate::player::{DataWrapper,Player};
 use crate::CLIENT_PORT;
+use crate::rpc_funcs::invoke_rpc;
 use std::collections::HashMap;
 use std::net::{UdpSocket, SocketAddr};
 use std::io::Result;
@@ -110,6 +111,11 @@ impl Client{
                                 }
                             }else{
                                 eprintln!("object_id for motion_update_broadcast was incorrectly supplied");
+                            }
+                        },
+                        "rpc_call" => {
+                            if let Some(ObjectType::RpcCall(rpc_data)) = received_map.get("rpc_data"){
+                                invoke_rpc(&rpc_data);
                             }
                         },
                         _ =>{

@@ -2,6 +2,7 @@ use macroquad::miniquad::window::dpi_scale;
 use macroquad::{prelude::*, texture};
 use macroquad_tiled as tiled;
 use macroquad_platformer::*;
+use rust_mp::message::{ObjectType, RpcCallContainer};
 use rust_mp::{player::*, PLAYER_SIZE_DATA};
 use rust_mp::game_handle::GameHandle;
 use std::sync::{Arc, Mutex};
@@ -133,6 +134,9 @@ async fn main() {
     let camera = Camera2D::from_display_rect(Rect::new(0.0, 152.0, 320.0, -152.0));
 
     println!("Entering game loop");
+   
+    
+    let mut test_counter: i32 = 0;
     loop {
         clear_background(BLACK);
         let texture_size = vec2(background_texture.width(),background_texture.height());
@@ -195,6 +199,21 @@ async fn main() {
                 &player_size_data,
             );
         }
+
+        if test_counter >= 500 {
+            game_handle_lock.send_rpc(RpcCallContainer{
+                function_name: "test_rpc_no_param".to_string(),
+                params: vec![]
+            });
+            
+            game_handle_lock.send_rpc(RpcCallContainer{
+                function_name: "test_rpc_params".to_string(),
+                params: vec![ObjectType::Integer(12345)]
+            });
+
+            test_counter = 0;
+        }
+        test_counter+=1;
 
         next_frame().await;
     }

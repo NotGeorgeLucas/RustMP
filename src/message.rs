@@ -18,6 +18,13 @@ impl MotionDataContainer {
 }
 
 
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct RpcCallContainer {
+    pub function_name: String,
+    pub params: Vec<ObjectType>,
+}
+
 #[derive(Serialize, Deserialize,Debug,Clone)]
 pub enum ObjectType{
     StringMsg(String),
@@ -25,6 +32,7 @@ pub enum ObjectType{
     PlayerMap(HashMap<i32, DataWrapper>),
     Player(DataWrapper),
     MotionData(MotionDataContainer),
+    RpcCall(RpcCallContainer),
 }
 
 #[derive(Serialize, Deserialize,Debug,Clone)]
