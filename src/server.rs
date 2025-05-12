@@ -146,12 +146,14 @@ impl Server {
                                         drop(world);
                                         let new_id: i32;
                                         if let Some(client_id) = self.socket_to_id(client_address){
-                                            pl.set_owner(client_id);
-                                            new_id = self.add_player(pl, client_id);
-                                            let mut wrapper_map = self.player_map_mutex.lock().unwrap();
-                                            wrapper_map.insert(new_id, pl);
-                                            response_map.insert("goal".into(), ObjectType::StringMsg("ret_player_obj_id".into()));
-                                            response_map.insert("id".into(), ObjectType::Integer(new_id));
+                                            if !self.synced_players.lock().unwrap().contains_key(&pl.get_object_id()){
+                                                pl.set_owner(client_id);
+                                                new_id = self.add_player(pl, client_id);
+                                                let mut wrapper_map = self.player_map_mutex.lock().unwrap();
+                                                wrapper_map.insert(new_id, pl);
+                                                response_map.insert("goal".into(), ObjectType::StringMsg("ret_player_obj_id".into()));
+                                                response_map.insert("id".into(), ObjectType::Integer(new_id));
+                                            }
                                         }
                                         
                                     },
