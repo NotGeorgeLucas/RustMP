@@ -71,14 +71,16 @@ impl CharacterTextures {
                 run: load_texture("assets/Run.png").await.unwrap(),
                 idle: load_texture("assets/Idle.png").await.unwrap(),
                 jump: load_texture("assets/Jump.png").await.unwrap(),
-                attack1: load_texture("assets/Attack1.png").await.unwrap(),
+                attack1_1: load_texture("assets/Attack1.png").await.unwrap(),
+                attack1_2: load_texture("assets/Attack1.png").await.unwrap(),
                 attack2: load_texture("assets/Attack2.png").await.unwrap(),
             },
             witch: PlayerTextures { 
                 run: load_texture("assets/W_blue/B_run.png").await.unwrap(),
                 idle: load_texture("assets/W_blue/B_idle.png").await.unwrap(),
                 jump: load_texture("assets/W_blue/B_charge.png").await.unwrap(),
-                attack1: load_texture("assets/W_blue/Attack1.png").await.unwrap(),
+                attack1_1: load_texture("assets/W_blue/Attack1_W.png").await.unwrap(),
+                attack1_2: load_texture("assets/W_blue/Attack1_S.png").await.unwrap(),
                 attack2: load_texture("assets/W_blue/Attack2.png").await.unwrap(),
             },
         }
@@ -89,7 +91,8 @@ pub struct PlayerTextures {
     pub run: Texture2D,
     pub idle: Texture2D,
     pub jump: Texture2D,
-    pub attack1: Texture2D,
+    pub attack1_1: Texture2D,
+    pub attack1_2: Texture2D,
     pub attack2: Texture2D,
    
 }
@@ -121,7 +124,8 @@ pub struct CharacterAnimations {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct WitchAnimations {
-    pub attack1: AnimationData,
+    pub attack1_1: AnimationData, 
+    pub attack1_2: AnimationData, 
     pub attack2: AnimationData,
     pub death: AnimationData,
     pub charge: AnimationData,
@@ -137,7 +141,7 @@ pub struct WitchAnimations {
 #[derive(Deserialize)]
 pub struct PlayerSizeData {
     pub witcher: CharacterAnimations,
-    pub witch: CharacterAnimations,
+    pub witch: WitchAnimations,
 }
 
 
@@ -176,7 +180,7 @@ impl CharacterAnimationFrames {
                 run: 8,
                 idle: 6,
                 jumping: 5,
-                attack1: 9,
+                attack1: 9, // Changed from 18 to 9 to only use attack1_1
                 attack2: 9,
                 death: 12,
                 take_hit: 3,
@@ -230,46 +234,55 @@ impl Player {
     }
     
     pub fn process_input(&mut self, world: &mut World, frame_timer: &mut f32) {
-        let pos = world.actor_pos(self.collider);
-        let on_ground = world.collide_check(self.collider, pos + vec2(0., 1.));
+    let pos = world.actor_pos(self.collider);
+    let on_ground = world.collide_check(self.collider, pos + vec2(0., 1.));
 
-        if self.wrapper.state != PlayerState::Attack1 && self.wrapper.state != PlayerState::Attack2 {
-            if is_key_down(KeyCode::D) {
-                self.speed.x = 100.0;
-                self.facing_right = true;
-            } else if is_key_down(KeyCode::A) {
-                self.speed.x = -100.0;
-                self.facing_right = false;
-            } else {
-                self.speed.x = 0.0;
-            }
+    if self.wrapper.state != PlayerState::Attack1 && self.wrapper.state != PlayerState::Attack2 {
+        if is_key_down(KeyCode::D) {
+            self.speed.x = 100.0;
+            self.facing_right = true;
+        } else if is_key_down(KeyCode::A) {
+            self.speed.x = -100.0;
+            self.facing_right = false;
         } else {
             self.speed.x = 0.0;
         }
-
-
-        if is_key_pressed(KeyCode::Space) && on_ground && self.wrapper.state != PlayerState::Attack1 {
-            self.speed.y = -120.0;
-        }
-         if is_key_pressed(KeyCode::F) && on_ground && self.wrapper.state != PlayerState::Attack1 {
-            self.wrapper.state = PlayerState::Attack1;
-            self.current_frame = 0;
-            *frame_timer = 0.0;
-            self.attack_frame = 0;
-        }
-
-        if is_key_pressed(KeyCode::G) && on_ground && self.wrapper.state != PlayerState::Attack2 {
-            self.wrapper.state = PlayerState::Attack2;
-            self.current_frame = 0;
-            *frame_timer = 0.0;
-            self.attack_frame = 0;
-             if self.facing_right {
+    } else if self.wrapper.state == PlayerState::Attack2 {
+        
+        if self.facing_right {
             self.speed.x = 100.0; 
         } else {
             self.speed.x = -100.0; 
         }
+    } else {
+        self .speed.x = 0.0;
+    }
+
+        if is_key_pressed(KeyCode::Space) && on_ground && self.wrapper.state != PlayerState::Attack1 && self.wrapper.state != PlayerState::Attack2 {
+        self.speed.y = -120.0;
+    }
+    
+    if is_key_pressed(KeyCode::F) && on_ground && self.wrapper.state != PlayerState::Attack1 && self.wrapper.state != PlayerState::Attack2 {
+        self.wrapper.state = PlayerState::Attack1;
+        self.current_frame = 0;
+        *frame_timer = 0.0;
+        self.attack_frame = 0;
+    }
+
+    if is_key_pressed(KeyCode::G) && on_ground && self.wrapper.state != PlayerState::Attack1 && self.wrapper.state != PlayerState::Attack2 {
+        self.wrapper.state = PlayerState::Attack2;
+        self.current_frame = 0;
+        *frame_timer = 0.0;
+        self.attack_frame = 0;
+        
+        
+        if self.facing_right {
+            self.speed.x = 100.0; 
+        } else {
+            self.speed.x = -100.0; 
         }
     }
+}
 
 
     pub fn apply_physics(&mut self, world: &mut World) {
@@ -307,144 +320,153 @@ impl Player {
     
 
 
-    pub fn handle(&mut self, world: &mut World, frame_timer: &mut f32, client_id: i32, character_type: CharacterType, animation_frames: &CharacterAnimationFrames) {
-        self.move_player(world, frame_timer, client_id);
-        let pos = world.actor_pos(self.collider);
-        let on_ground = world.collide_check(self.collider, pos + vec2(0., 1.));
-        let moving = self.speed.x.abs() > 0.0;
+    pub fn handle(
+    &mut self,
+    world: &mut World,
+    frame_timer: &mut f32,
+    client_id: i32,
+    character_type: CharacterType,
+    animation_frames: &CharacterAnimationFrames,
+) {
+    self.move_player(world, frame_timer, client_id);
+    let pos = world.actor_pos(self.collider);
+    let on_ground = world.collide_check(self.collider, pos + vec2(0., 1.));
+    let moving = self.speed.x.abs() > 0.0;
 
-        if self.wrapper.state != PlayerState::Attack1 && self.wrapper.state != PlayerState::Attack2 {
-            self.wrapper.state = if !on_ground {
-                PlayerState::Jumping
-            } else if moving {
-                PlayerState::Running
-            } else {
-                PlayerState::Idle
-            };
-        }
+    if self.wrapper.state != PlayerState::Attack1 && self.wrapper.state != PlayerState::Attack2 {
+        self.wrapper.state = if !on_ground {
+            PlayerState::Jumping
+        } else if moving {
+            PlayerState::Running
+        } else {
+            PlayerState::Idle
+        };
+    }
 
-        *frame_timer += get_frame_time();
-        if *frame_timer >= 0.1 {
-            *frame_timer = 0.0;
-            self.current_frame += 1;
+    *frame_timer += get_frame_time();
+    if *frame_timer >= 0.1 {
+        *frame_timer = 0.0;
+        self.current_frame += 1;
 
+        let frames = match character_type {
+            CharacterType::Witcher => &animation_frames.witcher,
+            CharacterType::Witch => &animation_frames.witch,
+        };
 
-            let frames = match character_type {
-                CharacterType::Witcher => &animation_frames.witcher,
-                CharacterType::Witch => &animation_frames.witch,
-            };
-
-            match self.wrapper.state {
-                PlayerState::Running => {
-                    self.current_frame = (self.current_frame + 1) % frames.run;
-                },
-                PlayerState::Idle => {
-                    self.current_frame = (self.current_frame + 1) % frames.idle;
-                },
-                PlayerState::Jumping => {
-                    self.current_frame = (self.current_frame + 1) % frames.jumping;
-                },
-                PlayerState::Attack1 => {
-                   
-                    if self.attack_frame < frames.attack1 - 1 {
-                        
-                        self.attack_frame += 1;
-                        self.current_frame = self.attack_frame;
+        match self.wrapper.state {
+            PlayerState::Running => {
+                self.current_frame = (self.current_frame + 1) % frames.run;
+            }
+            PlayerState::Idle => {
+                self.current_frame = (self.current_frame + 1) % frames.idle;
+            }
+            PlayerState::Jumping => {
+                self.current_frame = (self.current_frame + 1) % frames.jumping;
+            }
+            PlayerState::Attack1 => {
+                // Modified to only use attack1_1 frames (first 9 frames)
+                if self.attack_frame < frames.attack1 - 1 {
+                    self.attack_frame += 1;
+                    self.current_frame = self.attack_frame;
+                } else {
+                    self.attack_frame = 0;
+                    self.wrapper.state = if !on_ground {
+                        PlayerState::Jumping
+                    } else if moving {
+                        PlayerState::Running
                     } else {
-                        
-                        self.attack_frame = 0;
-                        self.wrapper.state = if !on_ground {
-                            PlayerState::Jumping
-                        } else if moving {
-                            PlayerState::Running
-                        } else {
-                            PlayerState::Idle
-                        };
-                
-                        self.current_frame = 0;
-                    }
-                },
-                PlayerState::Attack2 => {
-                  
-                    if self.attack_frame < frames.attack2 - 1 {
-                        self.attack_frame += 1;
-                        self.current_frame = self.attack_frame;
+                        PlayerState::Idle
+                    };
+                    self.current_frame = 0;
+                }
+            }
+            PlayerState::Attack2 => {
+                if self.attack_frame < frames.attack2 - 1 {
+                    self.attack_frame += 1;
+                    self.current_frame = self.attack_frame;
+                } else {
+                    self.attack_frame = 0;
+                    self.wrapper.state = if !on_ground {
+                        PlayerState::Jumping
+                    } else if moving {
+                        PlayerState::Running
                     } else {
-                        self.attack_frame = 0;
-                        self.wrapper.state = if !on_ground {
-                            PlayerState::Jumping
-                        } else if moving {
-                            PlayerState::Running
-                        } else {
-                            PlayerState::Idle
-                        };
-                        self.current_frame = 0;
-                    }
+                        PlayerState::Idle
+                    };
+                    self.current_frame = 0;
                 }
             }
         }
     }
+}
 
     pub fn render(&self, textures: &CharacterTextures, player_size: Vec2, character_type: CharacterType, world: &World, player_size_data: &PlayerSizeData) {
-        let player_width = 100.0;  
-        let player_height = 100.0; 
-        let witcher_width = player_width * 1.5;  
-        let witcher_height = player_height * 1.5; 
-        let texture = match character_type {
-            CharacterType::Witcher => match self.wrapper.state {
-                PlayerState::Running => &textures.witcher.run,
-                PlayerState::Idle => &textures.witcher.idle,
-                PlayerState::Jumping => &textures.witcher.jump,
-                PlayerState::Attack1 => &textures.witcher.attack1,
-                PlayerState::Attack2 => &textures.witcher.attack2,
-            },
-            CharacterType::Witch => match self.wrapper.state { 
-                PlayerState::Running => &textures.witch.run,
-                PlayerState::Idle => &textures.witch.idle,      
-                PlayerState::Jumping => &textures.witch.jump,   
-                PlayerState::Attack1 => &textures.witch.attack1, 
-                PlayerState::Attack2 => &textures.witch.attack2, 
-            },
-        };
+    let player_width = 100.0;  
+    let player_height = 100.0; 
+    let witcher_width = player_width * 1.5;  
+    let witcher_height = player_height * 1.5; 
+    
+    // Choose texture based on state and character type
+    let texture = match character_type {
+        CharacterType::Witcher => match self.wrapper.state {
+            PlayerState::Running => &textures.witcher.run,
+            PlayerState::Idle => &textures.witcher.idle,
+            PlayerState::Jumping => &textures.witcher.jump,
+            PlayerState::Attack1 => &textures.witcher.attack1_1,
+            PlayerState::Attack2 => &textures.witcher.attack2,
+        },
+        CharacterType::Witch => match self.wrapper.state { 
+            PlayerState::Running => &textures.witch.run,
+            PlayerState::Idle => &textures.witch.idle,      
+            PlayerState::Jumping => &textures.witch.jump,   
+            PlayerState::Attack1 => &textures.witch.attack1_1, 
+            PlayerState::Attack2 => &textures.witch.attack2, 
+        },
+    };
 
-        let frame_size = match character_type {
-            CharacterType::Witcher => match self.wrapper.state {
-                PlayerState::Running => &player_size_data.witcher.run.size_frame,
-                PlayerState::Idle => &player_size_data.witcher.idle.size_frame,
-                PlayerState::Jumping => &player_size_data.witcher.jump.size_frame,
-                PlayerState::Attack1 => &player_size_data.witcher.attack1.size_frame,
-                PlayerState::Attack2 => &player_size_data.witcher.attack2.size_frame,
-            },
-            CharacterType::Witch => match self.wrapper.state {
-                PlayerState::Running => &player_size_data.witch.run.size_frame,
-                PlayerState::Idle => &player_size_data.witch.idle.size_frame,
-                PlayerState::Jumping => &player_size_data.witch.jump.size_frame,
-                PlayerState::Attack1 => &player_size_data.witch.attack1.size_frame,
-                PlayerState::Attack2 => &player_size_data.witch.attack2.size_frame,
-            },
-        };
-        let frame_width = frame_size.width;
-        let frame_height = frame_size.height;
+    
+    let frame_size = match character_type {
+        CharacterType::Witcher => match self.wrapper.state {
+            PlayerState::Running => &player_size_data.witcher.run.size_frame,
+            PlayerState::Idle => &player_size_data.witcher.idle.size_frame,
+            PlayerState::Jumping => &player_size_data.witcher.jump.size_frame,
+            PlayerState::Attack1 => &player_size_data.witcher.attack1.size_frame,
+            PlayerState::Attack2 => &player_size_data.witcher.attack2.size_frame,
+        },
+        CharacterType::Witch => match self.wrapper.state {
+            PlayerState::Running => &player_size_data.witch.run.size_frame,
+            PlayerState::Idle => &player_size_data.witch.idle.size_frame,
+            PlayerState::Jumping => &player_size_data.witch.jump.size_frame,
+            PlayerState::Attack1 => &player_size_data.witch.attack1_1.size_frame, // Always use attack1_1 frame size
+            PlayerState::Attack2 => &player_size_data.witch.attack2.size_frame,
+        },
+    };
+    
+    let frame_width = frame_size.width;
+    let frame_height = frame_size.height;
 
-        let frame_to_draw = match self.wrapper.state {
-            PlayerState::Attack1 | PlayerState::Attack2 => self.attack_frame,
-            _ => self.current_frame,
-        };
+    // Use the current attack frame directly
+    let frame_to_draw = match self.wrapper.state {
+        PlayerState::Attack1 | PlayerState::Attack2 => self.attack_frame,
+        _ => self.current_frame,
+    };
 
-        let src_rect = match character_type{
-            CharacterType::Witcher => Rect::new(
-                frame_width * frame_to_draw as f32,
+    let src_rect = match character_type {
+        CharacterType::Witcher => Rect::new(
+            frame_width * frame_to_draw as f32,
+            0.0,
+            frame_width,
+            frame_height,
+        ),
+        CharacterType::Witch => {
+            Rect::new(
                 0.0,
+                frame_height * frame_to_draw as f32,
                 frame_width,
                 frame_height,
-            ),
-            CharacterType::Witch => Rect::new(
-                0.0,
-                frame_size.height * frame_to_draw as f32,
-                frame_size.width,
-                frame_size.height,
-            ),
-        };
+            )
+        },
+    };
 
         let collider_pos = world.actor_pos(self.collider);
         let mut collider_size = vec2(player_size.x, player_size.y);
@@ -459,7 +481,7 @@ impl Player {
 
         if character_type == CharacterType::Witch {
             if self.wrapper.state == PlayerState::Attack1 || self.wrapper.state == PlayerState::Attack2 {
-                collider_size.x *= 4.0; 
+                collider_size.x *= 2.0; 
             } else {
                 if self.wrapper.state == PlayerState::Jumping {
                 collider_size.x *= 2.0;
@@ -472,8 +494,13 @@ impl Player {
         }
 
         let dest_rect = if character_type == CharacterType::Witch {
+            let x_offset = if !self.facing_right && (self.wrapper.state == PlayerState::Attack1 || self.wrapper.state == PlayerState::Attack2) {
+            collider_size.x - player_size.x * scale * 1.5
+        } else {
+            0.0
+        };
             Rect::new(
-                collider_pos.x,
+                collider_pos.x - x_offset,
                 collider_pos.y + 20.0, 
                 collider_size.x,
                 collider_size.y,
@@ -486,29 +513,6 @@ impl Player {
                 witcher_height
             )
         };
-
-        /*if character_type == CharacterType::Witch {
-            draw_rectangle_lines(
-                collider_pos.x,
-                collider_pos.y + 20.0,
-                collider_size.x,
-                collider_size.y,
-                2.0, // Толщина линии
-                RED, // Цвет линии
-            );
-        }*/
-        /*if character_type == CharacterType::Witcher {
-            draw_rectangle_lines(
-                collider_pos.x, 
-                collider_pos.y, 
-                32.0, 
-                64.0, 
-                2.0, 
-                RED
-            );
-        }*/
-      
-       
     
         draw_texture_ex(
             texture,

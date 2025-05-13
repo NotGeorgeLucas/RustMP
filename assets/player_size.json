@@ -65,9 +65,16 @@
 
 
     "witch": {
-        "attack1":{
+        "attack1_1":{
             "size_frame":{ 
-                "width":882,
+                "width":432,
+                "height":390
+                
+            }
+        },
+        "attack1_2":{
+            "size_frame":{ 
+                "width":450,
                 "height":390
                 
             }
