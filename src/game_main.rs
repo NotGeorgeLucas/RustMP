@@ -141,7 +141,6 @@ async fn main() {
     println!("Entering game loop");
    
     
-    let mut test_counter: i32 = 0;
     loop {
         clear_background(BLACK);
         let texture_size = vec2(background_texture.width(),background_texture.height());
@@ -176,7 +175,7 @@ async fn main() {
         let wrapper_map_mutex = game_handle_lock.get_player_wrapper_map();
         let mut wrapper_map = wrapper_map_mutex.lock().unwrap();
 
-        let mut player_data: Vec<(i32, *mut Player)> = wrapper_map
+        let player_data: Vec<(i32, *mut Player)> = wrapper_map
             .iter_mut()
             .map(|(idx, player)| (*idx, player as *mut Player))
             .collect();
@@ -220,6 +219,15 @@ async fn main() {
                 player.speed_updated = false;
                 game_handle_lock.send_motion_update(*player_index, player.wrapper.generate_motion_data());
             }
+            if player.animation_changed {
+                player.animation_changed = false;
+                game_handle_lock.send_rpc(
+                    RpcCallContainer {
+                        function_name: "animation_force".to_string(),
+                        params: vec![ObjectType::Integer(*player_index), ObjectType::AnimationState(player.wrapper.state)],
+                    }
+                );
+            }
             
             let character_type = player.wrapper.character_type;
             let frame_size = match character_type {
@@ -236,22 +244,6 @@ async fn main() {
                 &player_size_data,
             );
         }
-
-
-        if test_counter >= 500 {
-            game_handle_lock.send_rpc(RpcCallContainer{
-                function_name: "test_rpc_no_param".to_string(),
-                params: vec![]
-            });
-            
-            game_handle_lock.send_rpc(RpcCallContainer{
-                function_name: "test_rpc_params".to_string(),
-                params: vec![ObjectType::Integer(12345)]
-            });
-
-            test_counter = 0;
-        }
-        test_counter+=1;
 
         next_frame().await;
     }

@@ -59,6 +59,7 @@ pub struct Player {
     pub health: i32,
     pub is_dead: bool,         // Flag to track if player is dead
     pub death_frame: usize,    // Track death animation frame
+    pub animation_changed: bool,
 }
 
 pub struct CharacterTextures {
@@ -296,6 +297,7 @@ impl Player {
             health: 100,
             is_dead: false,
             death_frame: 0,
+            animation_changed: false,
         }
     }
     
@@ -407,6 +409,7 @@ impl Player {
         animation_frames: &CharacterAnimationFrames,
         other_players: &mut Vec<&mut Player>
     ) {
+        let prev_state = self.wrapper.state;
         self.move_player(world, frame_timer, client_id);
 
         self.handle_attack(other_players);
@@ -417,6 +420,10 @@ impl Player {
             return;
         }
         
+        if prev_state != self.wrapper.state && matches!(self.wrapper.state, PlayerState::Attack1 | PlayerState::Attack2) {
+            self.animation_changed = true;
+        }
+
         let pos = world.actor_pos(self.collider);
         let on_ground = world.collide_check(self.collider, pos + vec2(0., 1.));
         let moving = self.speed.x.abs() > 0.0;
