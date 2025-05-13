@@ -500,8 +500,6 @@ impl Player {
         animation_frames: &CharacterAnimationFrames
     ) {
         *frame_timer += get_frame_time();
-        if *frame_timer >= 0.15 { // Slow down death animation slightly
-            *frame_timer = 0.0;
             
             let frames = match character_type {
                 CharacterType::Witcher => &animation_frames.witcher,
@@ -514,7 +512,7 @@ impl Player {
                 self.current_frame = self.death_frame;
             }
             // Otherwise stay on the last frame of death animation
-        }
+        
     }
     
 
