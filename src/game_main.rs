@@ -70,19 +70,19 @@ async fn main() {
     
     // Load the map with error handling
     let tiled_map = match tiled::load_map(
-    &tiled_map_json,
-    &[("tileset.png", tileset), ("assets/Elements/Loc1.png", background_texture.clone())],
-    &[]
-) {
-    Ok(map) => {
-        println!("Successfully loaded tiled map");
-        map
-    },
-    Err(err) => {
-        eprintln!("Failed to load tiled map: {:?}", err);
-        panic!("Could not load required map data");
-    }
-};
+        &tiled_map_json,
+        &[("tileset.png", tileset), ("assets/Elements/Loc1.png", background_texture.clone())],
+        &[]
+    ) {
+        Ok(map) => {
+            println!("Successfully loaded tiled map");
+            map
+        },
+        Err(err) => {
+            eprintln!("Failed to load tiled map: {:?}", err);
+            panic!("Could not load required map data");
+        }
+    };
     
     let mut static_colliders = vec![];
     for (_x, _y, tile) in tiled_map.tiles("main layer", None) {
@@ -124,6 +124,7 @@ async fn main() {
                 character_type: character_type,
                 position_data: (15.0, 15.0),
                 speed_data: (0.0, 0.0),
+                facing_right: true,
             },
             &mut world.lock().unwrap(),
             &player_size_data,

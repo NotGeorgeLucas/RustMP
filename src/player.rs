@@ -31,11 +31,19 @@ pub struct DataWrapper {
     pub character_type: CharacterType,
     pub position_data: (f32, f32),
     pub speed_data: (f32, f32),
+    pub facing_right: bool,
 }
 
 impl DataWrapper {
     pub fn generate_motion_data(&self) -> MotionDataContainer{
-        MotionDataContainer::new(self.position_data.0, self.position_data.1, self.speed_data.0, self.speed_data.1, self.state)
+        MotionDataContainer::new(
+            self.position_data.0,
+            self.position_data.1,
+            self.speed_data.0,
+            self.speed_data.1,
+            self.state,
+            self.facing_right,
+        )
     }
 }
 
@@ -204,12 +212,11 @@ impl Player {
             }
         };
         let position = if wrapper.character_type == CharacterType::Witcher {
+            vec2(wrapper.position_data.0, wrapper.position_data.1)
+        } else {
+            vec2(wrapper.position_data.0, wrapper.position_data.1)
+        };
         
-        vec2(25.0, 25.0)
-    } else {
-        
-        vec2(wrapper.position_data.0, wrapper.position_data.1)
-    };
 
         Player {
             collider: world.add_actor(position, width, height),
@@ -286,6 +293,7 @@ impl Player {
         }
         self.apply_physics(world);
         if client_id == self.get_owner() {
+            self.wrapper.facing_right = self.facing_right;
             let new_vel = self.speed;
             let new_pos = world.actor_pos(self.collider);
             self.wrapper.position_data = (new_pos.x,new_pos.y);

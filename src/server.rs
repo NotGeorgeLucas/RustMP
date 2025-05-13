@@ -186,11 +186,13 @@ impl Server {
                                         pl.wrapper.position_data = (motion_data.x, motion_data.y);
                                         pl.wrapper.speed_data = (motion_data.x_speed, motion_data.y_speed);
                                         pl.wrapper.state = motion_data.animation_state;
+                                        pl.wrapper.facing_right = motion_data.facing_right;
 
                                         let mut locked_world = self.world.lock().unwrap();
                                         locked_world.set_actor_position(pl.collider, vec2(motion_data.x, motion_data.y));
                                         
                                         pl.speed = vec2(motion_data.x_speed, motion_data.y_speed);
+                                        pl.facing_right = motion_data.facing_right;
 
 
 
