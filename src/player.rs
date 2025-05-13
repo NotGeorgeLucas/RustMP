@@ -1,4 +1,5 @@
 use serde::{Serialize,Deserialize};
+use strum_macros::{EnumString, Display};
 use macroquad::prelude::*;
 use macroquad_platformer::*;
 use crate::{message::MotionDataContainer, network_sync::NetworkSync};
@@ -16,7 +17,7 @@ pub enum PlayerState {
     
 }
 
-#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
+#[derive(EnumString, Display, Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum CharacterType {
     Witcher,
     Witch,

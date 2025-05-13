@@ -1,11 +1,11 @@
-use macroquad::miniquad::window::dpi_scale;
-use macroquad::{prelude::*, texture};
+use macroquad::prelude::*;
 use macroquad_tiled as tiled;
 use macroquad_platformer::*;
 use rust_mp::message::{ObjectType, RpcCallContainer};
 use rust_mp::{player::*, PLAYER_SIZE_DATA};
 use rust_mp::game_handle::GameHandle;
 use std::sync::{Arc, Mutex};
+use std::str::FromStr;
 
 
 #[macroquad::main("Platformer")]
@@ -98,15 +98,17 @@ async fn main() {
     world.lock().unwrap().add_static_tiled_layer(static_colliders, 8., 8., 40, 1);
     
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 3 {
-        eprintln!("Usage: game_main <is_server> <ip:port>");
+    if args.len() != 4 {
+        eprintln!("Usage: game_main <is_server> <ip:port> <character_type>");
         std::process::exit(1);
     }
 
     let is_server = args[1].parse::<bool>().unwrap_or(false);
     let ip_string = args[2].clone();
-    
-    println!("Starting game as {}", if is_server { "server" } else { "client" });
+    let character_type_str = args[3].clone();
+
+    let character_type = CharacterType::from_str(character_type_str.as_str()).unwrap();
+
     let game_handle = if is_server {
         GameHandle::construct_server(Arc::clone(&world))
     } else {
@@ -119,7 +121,7 @@ async fn main() {
                 state: PlayerState::Idle,
                 owner_id: 0,
                 object_id: -1,
-                character_type: CharacterType::Witch,
+                character_type: character_type,
                 position_data: (15.0, 15.0),
                 speed_data: (0.0, 0.0),
             },

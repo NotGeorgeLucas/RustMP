@@ -6,6 +6,7 @@ struct LauncherApp {
     text: String,
     pending_launch: bool,
     is_server: Option<bool>,
+    selected_character: rust_mp::player::CharacterType,
 }
 
 impl Default for LauncherApp {
@@ -14,6 +15,7 @@ impl Default for LauncherApp {
             text: String::new(),
             pending_launch: false,
             is_server: None,
+            selected_character: rust_mp::player::CharacterType::Witcher,
         }
     }
 }
@@ -27,7 +29,7 @@ impl LauncherApp {
 
     fn launch_game_after_closure(&mut self,is_server: bool, ip_string: Option<String>) -> Result<(),std::io::Error>{
         Command::new("target/debug/game_main")
-            .args(format!("{} {}:{}",is_server,ip_string.unwrap(),SERVER_PORT).split_whitespace())
+            .args(format!("{} {}:{} {}", is_server, ip_string.unwrap(), SERVER_PORT, self.selected_character.to_string()).split_whitespace())
             .spawn()?;
         Ok(())
     }
@@ -107,6 +109,19 @@ impl eframe::App for LauncherApp {
                 if ui.add_sized([ui.available_width(), 30.0], egui::Button::new("Join")).clicked() {
                     self.initiate_game_launch(false);
                 }
+
+                ui.horizontal(|ui| {
+                    ui.label("Select Character:");
+                    egui::ComboBox::from_id_salt("character_select")
+                        .selected_text(match self.selected_character {
+                            rust_mp::player::CharacterType::Witcher => "Witcher",
+                            rust_mp::player::CharacterType::Witch => "Witch",
+                        })
+                        .show_ui(ui, |ui| {
+                            ui.selectable_value(&mut self.selected_character, rust_mp::player::CharacterType::Witcher, "Witcher");
+                            ui.selectable_value(&mut self.selected_character, rust_mp::player::CharacterType::Witch, "Witch");
+                        });
+                });
             });
         });
     }
