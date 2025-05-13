@@ -125,6 +125,8 @@ async fn main() {
                 position_data: (15.0, 15.0),
                 speed_data: (0.0, 0.0),
                 facing_right: true,
+                
+                
             },
             &mut world.lock().unwrap(),
             &player_size_data,
@@ -174,34 +176,49 @@ async fn main() {
         let wrapper_map_mutex = game_handle_lock.get_player_wrapper_map();
         let mut wrapper_map = wrapper_map_mutex.lock().unwrap();
 
-        for (player_index, player) in wrapper_map.iter_mut() {
-            player.handle(
-                &mut world.lock().unwrap(),
-                &mut frame_timer,
-                game_handle_lock.get_personal_id(),
-                player.wrapper.character_type,
-                &animation_frames,
-            );
-            if player.speed_updated {
-                player.speed_updated = false;
-                game_handle_lock.send_motion_update(*player_index, player.wrapper.generate_motion_data());
-            }
-            let character_type = player.wrapper.character_type;
-            let frame_size = match character_type {
-                CharacterType::Witcher => &player_size_data.witcher.idle.size_frame,
-                CharacterType::Witch => &player_size_data.witch.idle.size_frame,
-            };
+        let player_indices: Vec<i32> = wrapper_map.keys().copied().collect();
 
-            let player_size = vec2(frame_size.width / 10.0, frame_size.height / 10.0);
+for player_index in player_indices {
+    // First, collect the other players' data without mutable borrow
+    let other_players: Vec<Player> = wrapper_map
+        .values()
+        .filter(|p| p.wrapper.object_id != wrapper_map[&player_index].wrapper.object_id)
+        .cloned()
+        .collect();
+    
+    // Now safely mutably borrow the current player
+    let player = wrapper_map.get_mut(&player_index).unwrap();
+    
+    player.handle(
+        &mut world.lock().unwrap(),
+        &mut frame_timer,
+        game_handle_lock.get_personal_id(),
+        player.wrapper.character_type,
+        &animation_frames,
+        &mut other_players.clone(), // Clone is needed since we're passing it as mutable
+    );
+    
+    if player.speed_updated {
+        player.speed_updated = false;
+        game_handle_lock.send_motion_update(player_index, player.wrapper.generate_motion_data());
+    }
+    
+    let character_type = player.wrapper.character_type;
+    let frame_size = match character_type {
+        CharacterType::Witcher => &player_size_data.witcher.idle.size_frame,
+        CharacterType::Witch => &player_size_data.witch.idle.size_frame,
+    };
+    let player_size = vec2(frame_size.width / 10.0, frame_size.height / 10.0);
+    
+    player.render(
+        &character_textures,
+        player_size,
+        character_type,
+        &world.lock().unwrap(),
+        &player_size_data,
+    );
+}
 
-            player.render(
-                &character_textures,
-                player_size,
-                character_type,
-                &world.lock().unwrap(),
-                &player_size_data,
-            );
-        }
 
         if test_counter >= 500 {
             game_handle_lock.send_rpc(RpcCallContainer{
