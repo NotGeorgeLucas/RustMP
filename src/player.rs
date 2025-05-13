@@ -60,6 +60,7 @@ pub struct Player {
     pub is_dead: bool,         // Flag to track if player is dead
     pub death_frame: usize,    // Track death animation frame
     pub animation_changed: bool,
+    pub invinvibility_frames: f32,
 }
 
 pub struct CharacterTextures {
@@ -225,11 +226,12 @@ impl Player {
     
     pub fn take_damage(&mut self, damage: i32) {
         
-        if self.is_dead {
+        if self.is_dead || self.invinvibility_frames > 0.0 {
             return;
         }
         
         self.health -= damage;
+        self.invinvibility_frames = 1.5;
         if self.health <= 0 {
             self.health = 0;
             self.is_dead = true;
@@ -258,13 +260,6 @@ impl Player {
                    Self::check_attack_collision(self, target)
                 {
                     target.take_damage(damage);
-                    println!(
-                        "Player {} attacked Player {} for {} damage. Target health: {}",
-                        self.wrapper.object_id,
-                        target.wrapper.object_id,
-                        damage,
-                        target.health
-                    );
                 }
             }
         }
@@ -298,6 +293,7 @@ impl Player {
             is_dead: false,
             death_frame: 0,
             animation_changed: false,
+            invinvibility_frames: 0.0,
         }
     }
     
@@ -414,6 +410,9 @@ impl Player {
 
         self.handle_attack(other_players);
         
+        self.invinvibility_frames -= get_frame_time();
+        if self.invinvibility_frames < 0.0 { self.invinvibility_frames = 0.0; }
+
         // Handle death animation separately
         if self.is_dead {
             self.handle_death_animation(frame_timer, character_type, animation_frames);
@@ -689,7 +688,19 @@ impl Player {
                 health_bar_width * health_percent,
                 health_bar_height,
                 Color::new(1.0 - health_percent, health_percent, 0.0, 0.8),
-            )
+            );
+
+            //Invincibility frame indicator
+            if self.invinvibility_frames > 0.0 {
+                draw_rectangle_lines(
+                    collider_pos.x - 10.0,
+                    collider_pos.y - 15.0,
+                    health_bar_width * health_percent,
+                    health_bar_height,
+                    1.5,
+                    Color::new(163.0, 213.0, 255.0, 0.8),
+                );
+            }
         }
     
         
