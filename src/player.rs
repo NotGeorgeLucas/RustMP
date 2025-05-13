@@ -197,6 +197,7 @@ pub fn load_player_size_data() -> PlayerSizeData {
 }
 
 impl Player {
+
     pub fn get_attack_zone(&self) -> Rect {
         let collider_pos = self.wrapper.position_data;
         let attack_width = 50.0; 
@@ -234,11 +235,11 @@ impl Player {
             self.wrapper.state = PlayerState::Death;
             self.death_frame = 0;
             self.current_frame = 0;
-            self.speed = Vec2::ZERO; // Stop movement when dead
+            self.speed = Vec2::ZERO; 
         }
     }
     
-    pub fn handle_attack(&mut self, other_players: &mut Vec<Player>) {
+    pub fn handle_attack(&mut self, other_players: &mut Vec<&mut Player>) {
         if self.is_dead {
             return;
         }
@@ -256,6 +257,13 @@ impl Player {
                    Self::check_attack_collision(self, target)
                 {
                     target.take_damage(damage);
+                    println!(
+                        "Player {} attacked Player {} for {} damage. Target health: {}",
+                        self.wrapper.object_id,
+                        target.wrapper.object_id,
+                        damage,
+                        target.health
+                    );
                 }
             }
         }
@@ -397,7 +405,7 @@ impl Player {
         client_id: i32,
         character_type: CharacterType,
         animation_frames: &CharacterAnimationFrames,
-        other_players: &mut Vec<Player>
+        other_players: &mut Vec<&mut Player>
     ) {
         self.move_player(world, frame_timer, client_id);
 
