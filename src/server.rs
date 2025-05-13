@@ -1,6 +1,6 @@
 use crate::network_sync::NetworkSync;
-use crate::{CLIENT_PORT, PLAYER_SIZE_DATA, SERVER_PORT};
-use crate::rpc_funcs::invoke_rpc;
+use crate::{CLIENT_PORT, PLAYER_SIZE_DATA, RPC_FN_TABLE, SERVER_PORT};
+use crate::rpc_funcs::{invoke_rpc,RuntimeParams,RuntimeArg};
 use crate::message::{Message, MotionDataContainer, ObjectType, RpcCallContainer};
 use crate::player::{DataWrapper, Player};
 use std::collections::HashMap;
@@ -219,7 +219,29 @@ impl Server {
                         },
                         "rpc_call" => {
                             if let Some(ObjectType::RpcCall(rpc_data)) = received_map.get("rpc_data"){
-                                invoke_rpc(&rpc_data);
+                                if let Some(func) = RPC_FN_TABLE.get(rpc_data.function_name.as_str()) {
+                                let mut runtime_args = Vec::new();
+                                let mut rpc_data_mut = rpc_data.clone();
+
+                                let mut player_map_locked = self.player_map_mutex.lock().unwrap();
+                                match func.get_runtime_params() {
+                                    RuntimeParams::Player => {
+                                        if let Some(ObjectType::Integer(player_id)) = rpc_data_mut.params.get(0) {
+                                            if let Some(player) = player_map_locked.get_mut(player_id) {
+                                                runtime_args.push(RuntimeArg::Player(player));
+                                            } else {
+                                                eprintln!("Player with ID {} not found", player_id);
+                                            }
+                                            rpc_data_mut.params.remove(0);
+                                        } else {
+                                            eprintln!("Expected player_id as first parameter for Player-based function");
+                                        }
+                                    }
+                                    RuntimeParams::None => { }
+                                }
+
+                                invoke_rpc(&rpc_data_mut, &mut runtime_args);
+                            }
                     
                     
                                 let mut target_vector: Vec<&SocketAddr> = Vec::new();
