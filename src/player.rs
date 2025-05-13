@@ -288,7 +288,7 @@ impl Player {
             attack_frame: 0,
             speed_updated: false,
             current_frame: 0,
-            facing_right: true,
+            facing_right: wrapper.facing_right,
             health: 100,
             is_dead: false,
             death_frame: 0,
