@@ -34,6 +34,7 @@ pub enum ObjectType{
     Player(DataWrapper),
     MotionData(MotionDataContainer),
     RpcCall(RpcCallContainer),
+    AnimationState(PlayerState),
 }
 
 #[derive(Serialize, Deserialize,Debug,Clone)]

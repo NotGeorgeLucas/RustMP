@@ -221,14 +221,22 @@ for player_index in player_indices {
 
 
         if test_counter >= 500 {
+            println!("SUKA");
             game_handle_lock.send_rpc(RpcCallContainer{
-                function_name: "test_rpc_no_param".to_string(),
-                params: vec![]
+                function_name: "animation_force".to_string(),
+                params: vec![ObjectType::Integer(0), ObjectType::AnimationState(PlayerState::Attack2)]
             });
-            
             game_handle_lock.send_rpc(RpcCallContainer{
-                function_name: "test_rpc_params".to_string(),
-                params: vec![ObjectType::Integer(12345)]
+                function_name: "animation_force".to_string(),
+                params: vec![ObjectType::Integer(1), ObjectType::AnimationState(PlayerState::Attack2)]
+            });
+            game_handle_lock.send_rpc(RpcCallContainer{
+                function_name: "animation_force".to_string(),
+                params: vec![ObjectType::Integer(2), ObjectType::AnimationState(PlayerState::Attack2)]
+            });
+            game_handle_lock.send_rpc(RpcCallContainer{
+                function_name: "animation_force".to_string(),
+                params: vec![ObjectType::Integer(3), ObjectType::AnimationState(PlayerState::Attack2)]
             });
 
             test_counter = 0;
