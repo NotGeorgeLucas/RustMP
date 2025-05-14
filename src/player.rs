@@ -3,7 +3,7 @@ use serde::{Serialize,Deserialize};
 use strum_macros::{EnumString, Display};
 use macroquad::prelude::*;
 use macroquad_platformer::*;
-use crate::{message::MotionDataContainer, network_sync::NetworkSync};
+use crate::{message::MotionDataContainer, network_sync::NetworkSync, witch_attack_spikes::Spikes};
 use serde_json;
 
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
@@ -61,6 +61,7 @@ pub struct Player {
     pub death_frame: usize,    // Track death animation frame
     pub animation_changed: bool,
     pub invinvibility_frames: f32,
+    pub spikes: Option<Spikes>,
 }
 
 pub struct CharacterTextures {
@@ -247,12 +248,25 @@ impl Player {
             return;
         }
         
+        let damage = if self.wrapper.state == PlayerState::Attack1 { 10 } else { 15 };
+        
+        if self.wrapper.character_type == CharacterType::Witch && matches!(self.wrapper.state, PlayerState::Attack1 | PlayerState::Attack2){
+            if let Some(spikes) = self.spikes.as_mut() {
+                spikes.handle(get_frame_time(), other_players);
+                spikes.render();
+                if spikes.time_to_live <= 0.0{
+                    self.spikes = None;
+                }
+            } else{
+                self.spikes = Some(Spikes::new(15.0, 15.0, 50.0, 50.0, 2.5, self.get_object_id(), damage));
+            }
+        }
+
         // Only check for collision during specific frames of the attack animation
         // (typically middle frames have the best hit detection)
         if (self.wrapper.state == PlayerState::Attack1 && self.attack_frame >= 3 && self.attack_frame <= 5) || 
            (self.wrapper.state == PlayerState::Attack2 && self.attack_frame >= 4 && self.attack_frame <= 6) {
             
-            let damage = if self.wrapper.state == PlayerState::Attack1 { 10 } else { 15 };
             
             for target in other_players.iter_mut() {
                 if target.wrapper.object_id != self.wrapper.object_id && // Don't attack self
@@ -294,6 +308,7 @@ impl Player {
             death_frame: 0,
             animation_changed: false,
             invinvibility_frames: 0.0,
+            spikes: None,
         }
     }
     

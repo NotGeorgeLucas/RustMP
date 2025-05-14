@@ -6,6 +6,7 @@ pub mod player;
 pub mod game_handle;
 pub mod rpc_game_callables;
 pub mod rpc_funcs;
+pub mod witch_attack_spikes;
 
 use std::collections::HashMap;
 use std::sync::Arc;
