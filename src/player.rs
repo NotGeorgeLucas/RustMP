@@ -649,14 +649,14 @@ impl Player {
                 Rect::new(
                     collider_pos.x - collider_size.x * 0.5, // Center the death animation
                     collider_pos.y + 20.0, 
-                    collider_size.x * 1.5, // Make death animation wider
+                    collider_size.x * 0.8, // Make death animation wider
                     collider_size.y,
                 )
             } else {
                 Rect::new(
                     collider_pos.x - witcher_width * 0.5,
-                    collider_pos.y - 20.0, // Position the death animation a bit higher
-                    witcher_width * 1.2,   // Make death animation wider
+                    collider_pos.y - 15.0, // Position the death animation a bit higher
+                    witcher_width * 0.8,   // Make death animation wider
                     witcher_height
                 )
             }
