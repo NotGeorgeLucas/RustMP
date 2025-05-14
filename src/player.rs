@@ -250,16 +250,47 @@ impl Player {
         
         let damage = if self.wrapper.state == PlayerState::Attack1 { 10 } else { 15 };
         
-        if self.wrapper.character_type == CharacterType::Witch && matches!(self.wrapper.state, PlayerState::Attack1 | PlayerState::Attack2){
+        if self.wrapper.character_type == CharacterType::Witch && matches!(self.wrapper.state, PlayerState::Attack1 | PlayerState::Attack2) {
+            // Если шипы уже существуют, обновляем их состояние
             if let Some(spikes) = self.spikes.as_mut() {
                 spikes.handle(get_frame_time(), other_players);
-                spikes.render();
-                if spikes.time_to_live <= 0.0{
+
+                // Удаляем шипы, если анимация атаки завершена
+                if self.attack_frame <= 0 {
                     self.spikes = None;
                 }
-            } else{
-                self.spikes = Some(Spikes::new(15.0, 15.0, 50.0, 50.0, 2.5, self.get_object_id(), damage));
+            } else {
+                // Создаём шипы в начале атаки
+                if self.attack_frame == 0 {
+                    let player_pos = self.wrapper.position_data;
+                    let witch_width = 75.0;
+                    let attack_width = 450.0 / 10.0;
+
+                    if self.facing_right {
+                        self.spikes = Some(Spikes::new(
+                            player_pos.0 + witch_width,
+                            player_pos.1 + 23.0,
+                            attack_width,
+                            390.0 / 10.0,
+                            2.5,
+                            self.get_object_id(),
+                            damage,
+                        ));
+                    } else {
+                        self.spikes = Some(Spikes::new(
+                            player_pos.0 - attack_width,
+                            player_pos.1 + 23.0,
+                            attack_width,
+                            390.0 / 10.0,
+                            2.5,
+                            self.get_object_id(),
+                            damage,
+                        ));
+                    }
+                }
             }
+        } else{
+            self.spikes = None; // Удаляем шипы, если не атакуем
         }
 
         // Only check for collision during specific frames of the attack animation
@@ -565,7 +596,7 @@ impl Player {
                 PlayerState::Idle => &textures.witch.idle,      
                 PlayerState::Jumping => &textures.witch.jump,   
                 PlayerState::Attack1 => &textures.witch.attack1_1, 
-                PlayerState::Attack2 => &textures.witch.attack2,
+                PlayerState::Attack2 => &textures.witch.attack1_2,
                 PlayerState::Death => &textures.witch.death,
             },
         };
@@ -585,7 +616,7 @@ impl Player {
                 PlayerState::Idle => &player_size_data.witch.idle.size_frame,
                 PlayerState::Jumping => &player_size_data.witch.jump.size_frame,
                 PlayerState::Attack1 => &player_size_data.witch.attack1_1.size_frame,
-                PlayerState::Attack2 => &player_size_data.witch.attack2.size_frame,
+                PlayerState::Attack2 => &player_size_data.witch.attack1_2.size_frame,
                 PlayerState::Death => &player_size_data.witch.death.size_frame,
             },
         };
@@ -732,6 +763,10 @@ impl Player {
                 ..Default::default()
             },
         );
+
+        if let Some(spikes) = &self.spikes {
+            spikes.render(src_rect, &textures.witch.attack1_2, self.facing_right);
+        }
     }
 }
 

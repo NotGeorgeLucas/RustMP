@@ -1,4 +1,5 @@
-use macroquad::{color::BLUE, math::Rect, shapes::draw_rectangle};
+
+use macroquad::{color::WHITE, math::{vec2, Rect}, texture::{draw_texture_ex, DrawTextureParams, Texture2D}};
 
 use crate::player::Player;
 
@@ -43,7 +44,7 @@ impl Spikes {
             height,
             time_to_live: ttl,
             owner_object_id: owner_object_id,
-            damage: damage
+            damage: damage,
         }
     }
 
@@ -59,7 +60,25 @@ impl Spikes {
         }        
     }
 
-    pub fn render(&self) {
-        draw_rectangle(self.position_x, self.position_y, self.width, self.height, BLUE);
+    pub fn render(&self, src_rect: Rect, texture: &Texture2D, facing_right: bool) {
+        
+        let position = vec2(self.position_x, self.position_y); // Assuming `self.position` exists
+
+        // Calculate destination size based on source rect (can scale if needed)
+        let dest_size = vec2(self.width, self.height); 
+
+        // Draw the specific frame from the character's texture
+        draw_texture_ex(
+            texture,
+            position.x,
+            position.y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(dest_size),
+                source: Some(src_rect),
+                flip_x: !facing_right, // or true if mirroring is needed
+                ..Default::default()
+            },
+        );
     }
 }
