@@ -1,5 +1,5 @@
 use eframe::egui;
-use std::process::Command;
+use std::{net::IpAddr, process::Command};
 use rust_mp::SERVER_PORT;
 
 struct LauncherApp {
@@ -39,9 +39,11 @@ impl LauncherApp {
 impl eframe::App for LauncherApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if self.pending_launch {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             self.pending_launch = false;
-            self.launch_game_after_closure(self.is_server.unwrap(), Some(self.text.clone())).expect("Failed to launch game main");
+            if !String::is_empty(&self.text) && self.text.parse::<IpAddr>().is_ok(){
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                self.launch_game_after_closure(self.is_server.unwrap(), Some(self.text.clone())).expect("Failed to launch game main");
+            }
         }
         ctx.set_visuals(egui::Visuals {
             dark_mode: true,
