@@ -40,9 +40,10 @@ impl eframe::App for LauncherApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if self.pending_launch {
             self.pending_launch = false;
-            if !String::is_empty(&self.text) && self.text.parse::<IpAddr>().is_ok(){
+            let is_server = self.is_server.unwrap_or(false);
+            if (!String::is_empty(&self.text) && self.text.parse::<IpAddr>().is_ok()) || is_server{
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                self.launch_game_after_closure(self.is_server.unwrap(), Some(self.text.clone())).expect("Failed to launch game main");
+                self.launch_game_after_closure(is_server, Some(self.text.clone())).expect("Failed to launch game main");
             }
         }
         ctx.set_visuals(egui::Visuals {
