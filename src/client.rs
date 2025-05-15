@@ -1,7 +1,9 @@
 use crate::message::{Message, ObjectType};
+use crate::network_sync::NetworkSync;
 use crate::player::{DataWrapper,Player};
 use crate::{CLIENT_PORT,RPC_FN_TABLE};
 use crate::rpc_funcs::{invoke_rpc,RuntimeArg, RuntimeParams};
+use crate::PLAYER_SIZE_DATA;
 use std::collections::HashMap;
 use std::net::{UdpSocket, SocketAddr};
 use std::io::Result;
@@ -89,6 +91,32 @@ impl Client{
                                 self.new_player_id = Some(*new_player_id);
                             }else{
                                 eprintln!("Invalid player id return type");
+                            }
+                        },
+                        "add_player" => {
+                            if let Some(player_obj) = received_map.get("player") {
+                                match player_obj {
+                                    ObjectType::Player(pl) => {
+                                        let mut world = self.world.lock().unwrap();
+                                        let mut pl = Player::construct_from_wrapper(*pl, &mut world, &*PLAYER_SIZE_DATA);
+                                        drop(world);
+                                        let object_id = pl.get_object_id();
+                                        let owner_id = pl.get_owner();
+
+                                        if !self.synced_players.lock().unwrap().contains_key(&pl.get_object_id()){
+                                            pl.set_owner(owner_id);
+                                            self.synced_players.lock().unwrap().insert(object_id, pl.wrapper);
+                                            let mut wrapper_map = self.player_map_mutex.lock().unwrap();
+                                            wrapper_map.insert(object_id, pl);                                                    
+                                        }
+                                        
+                                    },
+                                    _ => {
+                                        eprintln!("player field is invalid type");
+                                    }
+                                }
+                            } else {
+                                eprintln!("Missing 'player' field in received_map");
                             }
                         },
                         "motion_update_broadcast" => {

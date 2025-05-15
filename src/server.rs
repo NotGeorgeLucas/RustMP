@@ -165,6 +165,27 @@ impl Server {
                                                 new_id = self.add_player(pl, client_id);
                                                 let mut wrapper_map = self.player_map_mutex.lock().unwrap();
                                                 wrapper_map.insert(new_id, pl);
+                                                
+                                                let mut target_vector: Vec<&SocketAddr> = Vec::new();
+                                                
+                                                for (_, target) in self.user_map.iter(){
+
+                                                    if target.to_string() != "127.0.0.1:13882" && *target != client_address {
+                                                        target_vector.push(target);
+                                                    }
+                                                }
+
+                                                let mut add_player_broadcast_message: HashMap<String, ObjectType> = HashMap::new();
+
+                                                add_player_broadcast_message.insert("goal".to_string(), ObjectType::StringMsg("add_player".to_string()));
+                                                add_player_broadcast_message.insert("player".to_string(), ObjectType::Player(pl.wrapper));
+
+                                                for target in target_vector.iter(){
+                                                    if let Err(e) = self.send_message(&add_player_broadcast_message, **target) {
+                                                        eprintln!("Failed to send message: {}", e); 
+                                                    }
+                                                }
+                                                
                                                 response_map.insert("goal".into(), ObjectType::StringMsg("ret_player_obj_id".into()));
                                                 response_map.insert("id".into(), ObjectType::Integer(new_id));
                                             }
