@@ -387,7 +387,7 @@ impl Player {
             self.attack_frame = 0;
         }
 
-        if is_key_pressed(KeyCode::G) && on_ground && 
+        if is_key_pressed(KeyCode::G) && self.wrapper.character_type != CharacterType::Witch && on_ground && 
            self.wrapper.state != PlayerState::Attack1 && 
            self.wrapper.state != PlayerState::Attack2 {
             self.wrapper.state = PlayerState::Attack2;
