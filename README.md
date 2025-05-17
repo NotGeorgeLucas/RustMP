@@ -7,6 +7,26 @@ Kostiantyn Cherniakov
 
 ---
 
+## Launch guide
+In order to launch the project succesfully, due to multiple binaries in the project, two commands are needed:
+
+`cargo build --bins`
+
+`cargo run --bin rust_mp`
+
+After these two commands are executed, a launcher window will open, where the user may choose a character at the bottom of the screen, as well as wether they want to host the game or to join one, in which case they need to input a valid IP.
+
+## Disclaimers
+
+### Fair use disclaimer
+This project uses code and assets(most notably for the map) based on one of the examples in the macroquad repository (https://github.com/not-fl3/macroquad), licensed under the MIT License.
+
+### Project success disclaimer
+Due to the lack of time and experience on the sides of both people working on the project, this project still has some issues, most notably some visual bugs in the game and one issue with syncronization. This project also did not meet the original scope set at the start, for the reasons mentioned above.
+
+Additionally, due to the insistance of the team member responsible for the graphics, the game's visual style changed from top-down to side view.
+
+
 
 ## Zámer projektu / Project intent
 
